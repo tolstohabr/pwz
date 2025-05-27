@@ -17,8 +17,7 @@ type Storage interface {
 	GetOrder(id string) (models.Order, error)
 	DeleteOrder(id string) error
 	ListOrders() ([]models.Order, error)
-
-	//добавить
+	UpdateOrder(order models.Order) error
 }
 
 type FileStorage struct {

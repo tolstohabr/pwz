@@ -109,8 +109,7 @@ func ProcessOrders(storage storage.Storage, userID string, action string, orderI
 			continue
 		}
 
-		_ = storage.DeleteOrder(order.ID)
-		_ = storage.SaveOrder(order)
+		_ = storage.UpdateOrder(order)
 
 		results = append(results, fmt.Sprintf("PROCESSED: %s", id))
 	}
