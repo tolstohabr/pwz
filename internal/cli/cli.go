@@ -99,8 +99,15 @@ func handleAcceptOrder(storage *storage.FileStorage, args []string) {
 		}
 	}
 
-	if orderID == "" || userID == "" || expiresStr == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: Все параметры обязательны")
+	switch {
+	case orderID == "":
+		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует orderID")
+		return
+	case userID == "":
+		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует userID")
+		return
+	case expiresStr == "":
+		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует expiresStr")
 		return
 	}
 
