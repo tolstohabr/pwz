@@ -14,8 +14,10 @@ import (
 )
 
 var (
-	ValidationFailedExpiresAt = errors.New("ERROR: VALIDATION_FAILED: срок хранения в прошлом")
-	OrderAlreadyExistsError   = errors.New("ERROR: ORDER_ALREADY_EXISTS: заказ уже есть")
+	ValidationFailedExpiresAtError = errors.New("ERROR: VALIDATION_FAILED: срок хранения в прошлом")
+	OrderAlreadyExistsError        = errors.New("ERROR: ORDER_ALREADY_EXISTS: заказ уже есть")
+	OrderAlreadyIssuedError        = errors.New("ERROR: ORDER_ALREADY_ISSUED: заказ у клиента")
+	StorageNotExpiredError         = errors.New("ERROR: STORAGE_NOT_EXPIRED: время хранения не истекло")
 )
 
 const (
@@ -27,7 +29,7 @@ const (
 func AcceptOrder(storage storage.Storage, orderID, userID string, expiresAt time.Time) error {
 	//если срок хранения в прошлом
 	if expiresAt.Before(time.Now()) {
-		return ValidationFailedExpiresAt
+		return ValidationFailedExpiresAtError
 	}
 
 	//если такой заказ уже есть
@@ -57,7 +59,7 @@ func ReturnOrder(storage storage.Storage, orderID string) error {
 
 	//если заказ у клиента
 	if order.Status == models.StatusIssued {
-		return errors.New("ERROR: ORDER_ALREADY_ISSUED: заказ у клиента")
+		return OrderAlreadyIssuedError
 	}
 
 	//если заказ в ПВЗ после возврата
@@ -67,7 +69,7 @@ func ReturnOrder(storage storage.Storage, orderID string) error {
 
 	//если время хранения не истекло
 	if time.Now().Before(order.ExpiresAt) {
-		return errors.New("ERROR: STORAGE_NOT_EXPIRED: время хранения не истекло")
+		return StorageNotExpiredError
 	}
 
 	return storage.DeleteOrder(orderID)

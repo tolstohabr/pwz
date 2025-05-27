@@ -284,7 +284,7 @@ func handleOrderHistory() {
 		line := scanner.Text()
 		var record map[string]string
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			fmt.Println("ERROR: JSON_FAILED: ", err)
+			fmt.Printf("ERROR: JSON_FAILED: \n", err)
 			continue
 		}
 		fmt.Printf("HISTORY: %s %s %s\n", record["order_id"], record["status"], record["timestamp"])
