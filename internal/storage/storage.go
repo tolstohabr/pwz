@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrOrderNotFound = errors.New("ERROR: ORDER_NOT_FOUND: заказ не найден")
+	DuplicateOrder   = errors.New("ERROR: DUPLICATE_ORDER: заказ с таким ID уже существует")
 )
 
 type Storage interface {
@@ -62,6 +63,12 @@ func (fs *FileStorage) SaveOrder(order models.Order) error {
 	orders, err := fs.load()
 	if err != nil {
 		return err
+	}
+
+	for _, o := range orders {
+		if o.ID == order.ID {
+			return DuplicateOrder
+		}
 	}
 
 	orders = append(orders, order)
