@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"PWZ1.0/internal/models"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -10,7 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"PWZ1.0/internal/models"
+
 	"PWZ1.0/internal/storage"
+)
+
+const (
+	dateFormat = "2006-01-02"
 )
 
 func Run(storage *storage.FileStorage, scanner *bufio.Scanner) {
@@ -64,14 +69,13 @@ func printHelp() {
 	fmt.Println("  process-order   	Выдать или принять возврат")
 	fmt.Println("  list-orders    	Получить список заказов")
 	fmt.Println("  list-returns    	Получить список возвратов")
-	fmt.Println("  list-returns    	Получить список возвратов")
 	fmt.Println("  order-history   	Получить историю заказов")
 	fmt.Println("  import-orders   	Импорт заказов из файла")
 	fmt.Println("  scroll-orders   	Прокрутка")
 	fmt.Println("  exit             Выйти из приложения")
 }
 
-// Принять заказ от курьера
+// handleAcceptOrder Принять заказ от курьера
 func handleAcceptOrder(storage *storage.FileStorage, args []string) {
 	var orderID, userID, expiresStr string
 
@@ -100,7 +104,7 @@ func handleAcceptOrder(storage *storage.FileStorage, args []string) {
 		return
 	}
 
-	expiresAt, err := time.Parse("2006-01-02", expiresStr)
+	expiresAt, err := time.Parse(dateFormat, expiresStr)
 	if err != nil {
 		fmt.Println("ERROR: VALIDATION_FAILED: Неверный формат даты")
 		return
@@ -114,7 +118,7 @@ func handleAcceptOrder(storage *storage.FileStorage, args []string) {
 	}
 }
 
-// Вернуть заказ
+// handleReturnOrder Вернуть заказ
 func handleReturnOrder(storage *storage.FileStorage, args []string) {
 	var orderID string
 
@@ -132,13 +136,13 @@ func handleReturnOrder(storage *storage.FileStorage, args []string) {
 
 	err := ReturnOrder(storage, orderID)
 	if err != nil {
-		fmt.Println("ERROR: INTERNAL_УККЩК: ", err.Error())
+		fmt.Println("ERROR: INTERNAL_ERROR: ", err.Error())
 	} else {
 		fmt.Println("ORDER_RETURNED:", orderID)
 	}
 }
 
-// Выдать или принять возврат
+// handleProcessOrders Выдать или принять возврат
 func handleProcessOrders(storage storage.Storage, args []string) {
 	var userID, action, orderIDsStr string
 
@@ -175,7 +179,7 @@ func handleProcessOrders(storage storage.Storage, args []string) {
 	}
 }
 
-// Получить список заказов
+// handleListOrders Получить список заказов
 func handleListOrders(storage storage.Storage, args []string) {
 	var userID string
 	var inPvzOnly bool
@@ -230,8 +234,9 @@ func handleListOrders(storage storage.Storage, args []string) {
 	fmt.Printf("TOTAL: %d\n", len(orders))
 }
 
-// Получить список возвратов
+// handleListReturns Получить список возвратов
 func handleListReturns(storage storage.Storage, args []string) {
+	var err error
 	var page, limit int
 	page = 0
 	limit = 20
@@ -240,7 +245,10 @@ func handleListReturns(storage storage.Storage, args []string) {
 		switch args[i] {
 		case "--page":
 			if i+1 < len(args) {
-				page, _ = strconv.Atoi(args[i+1])
+				page, err = strconv.Atoi(args[i+1])
+				if err != nil {
+					fmt.Printf("ERROR: VALIDATION_FAILED: %v", err)
+				}
 				i++
 			}
 		case "--limit":
@@ -262,7 +270,7 @@ func handleListReturns(storage storage.Storage, args []string) {
 	fmt.Printf("PAGE: %d LIMIT: %d\n", page, limit)
 }
 
-// Получить историю заказов
+// handleOrderHistory Получить историю заказов
 func handleOrderHistory() {
 	file, err := os.Open("order_history.json")
 	if err != nil {
@@ -287,7 +295,7 @@ func handleOrderHistory() {
 	}
 }
 
-// Импорт заказов из файла
+// handleImportOrders Импорт заказов из файла
 func handleImportOrders(storage storage.Storage, args []string) {
 	var filePath string
 
@@ -329,7 +337,7 @@ func handleImportOrders(storage storage.Storage, args []string) {
 	fmt.Printf("IMPORTED: %d\n", imported)
 }
 
-// прокрутка
+// handleScrollOrders прокрутка
 func handleScrollOrders(storage storage.Storage, args []string) {
 	var userID string
 	var limit = 20

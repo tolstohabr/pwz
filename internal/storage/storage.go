@@ -1,10 +1,15 @@
 package storage
 
 import (
-	"PWZ1.0/internal/models"
 	"encoding/json"
 	"errors"
 	"os"
+
+	"PWZ1.0/internal/models"
+)
+
+var (
+	ErrOrderNotFound = errors.New("ERROR: ORDER_NOT_FOUND: заказ не найден")
 )
 
 type Storage interface {
@@ -64,6 +69,20 @@ func (fs *FileStorage) SaveOrder(order models.Order) error {
 	return fs.save(orders)
 }
 
+func (fs *FileStorage) UpdateOrder(order models.Order) error {
+	orders, err := fs.load()
+	if err != nil {
+		return err
+	}
+	for i, ord := range orders {
+		if ord.ID == order.ID {
+			orders[i] = order
+			break
+		}
+	}
+	return fs.save(orders)
+}
+
 func (fs *FileStorage) GetOrder(id string) (models.Order, error) {
 	orders, err := fs.load()
 	if err != nil {
@@ -76,7 +95,7 @@ func (fs *FileStorage) GetOrder(id string) (models.Order, error) {
 		}
 	}
 
-	return models.Order{}, errors.New("ERROR: ORDER_NOT_FOUND: заказ не найден")
+	return models.Order{}, ErrOrderNotFound
 }
 
 func (fs *FileStorage) DeleteOrder(id string) error {
@@ -97,7 +116,7 @@ func (fs *FileStorage) DeleteOrder(id string) error {
 	}
 
 	if !found {
-		return errors.New("ERROR: ORDER_NOT_FOUND: заказ не найден")
+		return ErrOrderNotFound
 	}
 
 	return fs.save(updated)

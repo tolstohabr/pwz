@@ -1,11 +1,12 @@
 package main
 
 import (
-	"PWZ1.0/internal/cli"
-	"PWZ1.0/internal/storage"
 	"bufio"
 	"fmt"
 	"os"
+
+	"PWZ1.0/internal/cli"
+	"PWZ1.0/internal/storage"
 )
 
 func main() {

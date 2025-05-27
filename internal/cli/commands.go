@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"PWZ1.0/internal/models"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,20 +8,32 @@ import (
 	"sort"
 	"time"
 
+	"PWZ1.0/internal/models"
+
 	"PWZ1.0/internal/storage"
 )
 
-// добавить заказ в ПВЗ
+var (
+	ValidationFailedExpiresAt = errors.New("ERROR: VALIDATION_FAILED: срок хранения в прошлом")
+	OrderAlreadyExistsError   = errors.New("ERROR: ORDER_ALREADY_EXISTS: заказ уже есть")
+)
+
+const (
+	expiredTime    = 48 * time.Hour
+	dateTimeFormat = "2006-01-02 15:04:05"
+)
+
+// AcceptOrder добавить заказ в ПВЗ
 func AcceptOrder(storage storage.Storage, orderID, userID string, expiresAt time.Time) error {
 	//если срок хранения в прошлом
 	if expiresAt.Before(time.Now()) {
-		return errors.New("ERROR: VALIDATION_FAILED: срок хранения в прошлом")
+		return ValidationFailedExpiresAt
 	}
 
 	//если такой заказ уже есть
 	_, err := storage.GetOrder(orderID)
 	if err == nil {
-		return errors.New("ERROR: ORDER_ALREADY_EXISTS: заказ уже есть")
+		return OrderAlreadyExistsError
 	}
 
 	newOrder := models.Order{
@@ -37,7 +48,7 @@ func AcceptOrder(storage storage.Storage, orderID, userID string, expiresAt time
 	return storage.SaveOrder(newOrder)
 }
 
-// удалить заказ
+// ReturnOrder удалить заказ
 func ReturnOrder(storage storage.Storage, orderID string) error {
 	order, err := storage.GetOrder(orderID)
 	if err != nil {
@@ -62,7 +73,7 @@ func ReturnOrder(storage storage.Storage, orderID string) error {
 	return storage.DeleteOrder(orderID)
 }
 
-// обработать выдачу или возврат заказа
+// ProcessOrders обработать выдачу или возврат заказа
 func ProcessOrders(storage storage.Storage, userID string, action string, orderIDs []string) []string {
 	var results []string
 	for _, id := range orderIDs {
@@ -87,7 +98,7 @@ func ProcessOrders(storage storage.Storage, userID string, action string, orderI
 			order.IssuedAt = &now
 			appendToHistory(order.ID, models.StatusIssued)
 		} else if action == "return" {
-			if order.IssuedAt == nil || time.Since(*order.IssuedAt) > 48*time.Hour {
+			if order.IssuedAt == nil || time.Since(*order.IssuedAt) > expiredTime {
 				results = append(results, fmt.Sprintf("ERROR %s: RETURN_TIME_EXPIRED: время на возврат истекло", id))
 				continue
 			}
@@ -106,8 +117,13 @@ func ProcessOrders(storage storage.Storage, userID string, action string, orderI
 	return results
 }
 
-// вывести список заказов
+// ListOrders вывести список заказов
 func ListOrders(storage storage.Storage, userID string, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
+	if limit <= 0 {
+		fmt.Println("ERROR: LIST_ORDERS_FAILED: limit должен быть больше нуля")
+		return nil
+	}
+
 	allOrders, err := storage.ListOrders()
 	if err != nil {
 		return []models.Order{}
@@ -145,7 +161,7 @@ func ListOrders(storage storage.Storage, userID string, inPvzOnly bool, lastCoun
 	return filtered
 }
 
-// вывести список возвратов
+// ListReturns вывести список возвратов
 func ListReturns(storage storage.Storage, page int, limit int) []models.Order {
 	allOrders, err := storage.ListOrders()
 	if err != nil {
@@ -174,12 +190,12 @@ func ListReturns(storage storage.Storage, page int, limit int) []models.Order {
 	return returned
 }
 
-// для добавления записи об изменении статуса в json-ку
+// appendToHistory для добавления записи об изменении статуса в json-ку
 func appendToHistory(orderID string, status models.OrderStatus) {
 	record := map[string]string{
 		"order_id":  orderID,
 		"status":    string(status),
-		"timestamp": time.Now().Format("2006-01-02 15:04:05"),
+		"timestamp": time.Now().Format(dateTimeFormat),
 	}
 
 	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -198,7 +214,7 @@ func appendToHistory(orderID string, status models.OrderStatus) {
 	file.Write(append(data, '\n'))
 }
 
-// прокрутка
+// ScrollOrders прокрутка
 func ScrollOrders(storage storage.Storage, userID string, lastID string, limit int) ([]models.Order, string) {
 	allOrders, err := storage.ListOrders()
 	if err != nil {
