@@ -2,15 +2,10 @@ package storage
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 
 	"PWZ1.0/internal/models"
-)
-
-var (
-	ErrOrderNotFound = errors.New("ERROR: ORDER_NOT_FOUND: заказ не найден")
-	DuplicateOrder   = errors.New("ERROR: DUPLICATE_ORDER: заказ с таким ID уже существует")
+	"PWZ1.0/internal/models/domainErrors"
 )
 
 type Storage interface {
@@ -67,7 +62,7 @@ func (fs *FileStorage) SaveOrder(order models.Order) error {
 
 	for _, o := range orders {
 		if o.ID == order.ID {
-			return DuplicateOrder
+			return domainErrors.ErrDuplicateOrder
 		}
 	}
 
@@ -101,7 +96,7 @@ func (fs *FileStorage) GetOrder(id string) (models.Order, error) {
 		}
 	}
 
-	return models.Order{}, ErrOrderNotFound
+	return models.Order{}, domainErrors.ErrOrderNotFound
 }
 
 func (fs *FileStorage) DeleteOrder(id string) error {
@@ -122,7 +117,7 @@ func (fs *FileStorage) DeleteOrder(id string) error {
 	}
 
 	if !found {
-		return ErrOrderNotFound
+		return domainErrors.ErrOrderNotFound
 	}
 
 	return fs.save(updated)

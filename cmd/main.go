@@ -7,6 +7,7 @@ import (
 
 	"PWZ1.0/internal/cli"
 	"PWZ1.0/internal/storage"
+	"PWZ1.0/internal/tools/logger"
 )
 
 func main() {
@@ -15,5 +16,6 @@ func main() {
 	storage := storage.NewFileStorage("orders.json")
 	scanner := bufio.NewScanner(os.Stdin)
 
+	logger.InitLogger()
 	cli.Run(storage, scanner)
 }

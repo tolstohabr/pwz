@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,8 +11,10 @@ import (
 	"time"
 
 	"PWZ1.0/internal/models"
+	"PWZ1.0/internal/models/domainErrors"
 
 	"PWZ1.0/internal/storage"
+	"PWZ1.0/internal/tools/logger"
 )
 
 const (
@@ -19,6 +22,8 @@ const (
 )
 
 func Run(storage *storage.FileStorage, scanner *bufio.Scanner) {
+	ctx := context.Background()
+
 	for {
 		fmt.Print("> ")
 		if !scanner.Scan() {
@@ -40,21 +45,21 @@ func Run(storage *storage.FileStorage, scanner *bufio.Scanner) {
 		case "help":
 			printHelp()
 		case "accept-order":
-			handleAcceptOrder(storage, args[1:])
+			handleAcceptOrder(ctx, storage, args[1:])
 		case "return-order":
-			handleReturnOrder(storage, args[1:])
+			handleReturnOrder(ctx, storage, args[1:])
 		case "process-order":
-			handleProcessOrders(storage, args[1:])
+			handleProcessOrders(ctx, storage, args[1:])
 		case "list-orders":
-			handleListOrders(storage, args[1:])
+			handleListOrders(ctx, storage, args[1:])
 		case "list-returns":
 			handleListReturns(storage, args[1:])
 		case "order-history":
-			handleOrderHistory()
+			handleOrderHistory(ctx)
 		case "import-orders":
-			handleImportOrders(storage, args[1:])
+			handleImportOrders(ctx, storage, args[1:])
 		case "scroll-orders":
-			handleScrollOrders(storage, args[1:])
+			handleScrollOrders(ctx, storage, args[1:])
 		default:
 			fmt.Println("Неизвестная команда")
 		}
@@ -76,7 +81,7 @@ func printHelp() {
 }
 
 // handleAcceptOrder Принять заказ от курьера
-func handleAcceptOrder(storage *storage.FileStorage, args []string) {
+func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args []string) {
 	var orderID, userID, expiresStr string
 
 	for i := 0; i < len(args); i++ {
@@ -101,32 +106,33 @@ func handleAcceptOrder(storage *storage.FileStorage, args []string) {
 
 	switch {
 	case orderID == "":
-		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует orderID")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует orderID")
 		return
 	case userID == "":
-		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует userID")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
 		return
 	case expiresStr == "":
-		fmt.Println("ERROR: VALIDATION_FAILED: отсутствует expiresStr")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует expiresStr")
 		return
 	}
 
 	expiresAt, err := time.Parse(dateFormat, expiresStr)
 	if err != nil {
-		fmt.Println("ERROR: VALIDATION_FAILED: Неверный формат даты")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат даты")
 		return
 	}
 
-	err = AcceptOrder(storage, orderID, userID, expiresAt)
+	err = AcceptOrder(ctx, storage, orderID, userID, expiresAt)
 	if err != nil {
-		fmt.Println("ERROR:", err.Error())
+		logger.LogErrorWithCode(ctx, err, "такой заказ уже существует или срок хранения в прошлом")
+
 	} else {
 		fmt.Println("ORDER_ACCEPTED:", orderID)
 	}
 }
 
 // handleReturnOrder Вернуть заказ
-func handleReturnOrder(storage *storage.FileStorage, args []string) {
+func handleReturnOrder(ctx context.Context, storage *storage.FileStorage, args []string) {
 	var orderID string
 
 	for i := 0; i < len(args); i++ {
@@ -137,20 +143,20 @@ func handleReturnOrder(storage *storage.FileStorage, args []string) {
 	}
 
 	if orderID == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: Параметр --order-id обязателен.")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует orderID")
 		return
 	}
 
 	err := ReturnOrder(storage, orderID)
 	if err != nil {
-		fmt.Println("ERROR: INTERNAL_ERROR: ", err.Error())
+		logger.LogErrorWithCode(ctx, err, "заказ у клиента или время хранения еще не истекло")
 	} else {
 		fmt.Println("ORDER_RETURNED:", orderID)
 	}
 }
 
 // handleProcessOrders Выдать или принять возврат
-func handleProcessOrders(storage storage.Storage, args []string) {
+func handleProcessOrders(ctx context.Context, storage storage.Storage, args []string) {
 	var userID, action, orderIDsStr string
 
 	for i := 0; i < len(args); i++ {
@@ -174,12 +180,12 @@ func handleProcessOrders(storage storage.Storage, args []string) {
 	}
 
 	if userID == "" || action == "" || orderIDsStr == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: Все параметры обязательны")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствуют необходимые параметры")
 		return
 	}
 
 	orderIDs := strings.Split(orderIDsStr, ",")
-	results := ProcessOrders(storage, userID, action, orderIDs)
+	results := ProcessOrders(ctx, storage, userID, action, orderIDs)
 
 	for _, res := range results {
 		fmt.Println(res)
@@ -187,7 +193,7 @@ func handleProcessOrders(storage storage.Storage, args []string) {
 }
 
 // handleListOrders Получить список заказов
-func handleListOrders(storage storage.Storage, args []string) {
+func handleListOrders(ctx context.Context, storage storage.Storage, args []string) {
 	var userID string
 	var inPvzOnly bool
 	var lastCount int
@@ -230,13 +236,13 @@ func handleListOrders(storage storage.Storage, args []string) {
 	}
 
 	if userID == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: --user-id обязателен")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
 		return
 	}
 
-	orders := ListOrders(storage, userID, inPvzOnly, lastCount, page, limit)
+	orders := ListOrders(ctx, storage, userID, inPvzOnly, lastCount, page, limit)
 	for _, o := range orders {
-		fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format("2006-01-02"))
+		fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
 	}
 	fmt.Printf("TOTAL: %d\n", len(orders))
 }
@@ -254,7 +260,7 @@ func handleListReturns(storage storage.Storage, args []string) {
 			if i+1 < len(args) {
 				page, err = strconv.Atoi(args[i+1])
 				if err != nil {
-					fmt.Printf("ERROR: VALIDATION_FAILED: %v", err)
+					fmt.Printf("ERROR: STRCONV_FAILED: %v", err)
 				}
 				i++
 			}
@@ -268,9 +274,9 @@ func handleListReturns(storage storage.Storage, args []string) {
 
 	returns := ListReturns(storage, page, limit)
 	for _, o := range returns {
-		returnedAt := "N/A"
+		returnedAt := "Нет данных"
 		if o.IssuedAt != nil {
-			returnedAt = o.IssuedAt.Format("2006-01-02 15:04:05")
+			returnedAt = o.IssuedAt.Format(dateTimeFormat)
 		}
 		fmt.Printf("RETURN: %s %s %s\n", o.ID, o.UserID, returnedAt)
 	}
@@ -278,10 +284,10 @@ func handleListReturns(storage storage.Storage, args []string) {
 }
 
 // handleOrderHistory Получить историю заказов
-func handleOrderHistory() {
+func handleOrderHistory(ctx context.Context) {
 	file, err := os.Open("order_history.json")
 	if err != nil {
-		fmt.Println("ERROR: OPEN_FAILED: не открывается файл", err)
+		logger.LogErrorWithCode(ctx, domainErrors.ErrOpenFiled, "не открывается файл")
 		return
 	}
 	defer file.Close()
@@ -291,19 +297,19 @@ func handleOrderHistory() {
 		line := scanner.Text()
 		var record map[string]string
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			fmt.Printf("ERROR: JSON_FAILED: \n", err)
+			fmt.Printf("ERROR: JSON_FAILED: %v\n", err)
 			continue
 		}
 		fmt.Printf("HISTORY: %s %s %s\n", record["order_id"], record["status"], record["timestamp"])
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Println("ERROR: чтение файла:", err)
+		fmt.Printf("ERROR: READ_FAILED: %v", err)
 	}
 }
 
 // handleImportOrders Импорт заказов из файла
-func handleImportOrders(storage storage.Storage, args []string) {
+func handleImportOrders(ctx context.Context, storage storage.Storage, args []string) {
 	var filePath string
 
 	for i := 0; i < len(args); i++ {
@@ -312,22 +318,21 @@ func handleImportOrders(storage storage.Storage, args []string) {
 			i++
 		}
 	}
-
 	if filePath == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: Параметр --file обязателен")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "параметр --file обязателен")
 		return
 	}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println("ERROR: READ_FILE_ERROR: не удалось прочитать файл:", err)
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "параметр --file обязателен")
 		return
 	}
 
 	var orders []models.Order
 	err = json.Unmarshal(data, &orders)
 	if err != nil {
-		fmt.Println("ERROR: INVALID: некорректный JSON:", err)
+		logger.LogErrorWithCode(ctx, domainErrors.ErrJsonFiled, "некорректный JSON")
 		return
 	}
 
@@ -345,7 +350,7 @@ func handleImportOrders(storage storage.Storage, args []string) {
 }
 
 // handleScrollOrders прокрутка
-func handleScrollOrders(storage storage.Storage, args []string) {
+func handleScrollOrders(ctx context.Context, storage storage.Storage, args []string) {
 	var userID string
 	var limit = 20
 
@@ -368,7 +373,7 @@ func handleScrollOrders(storage storage.Storage, args []string) {
 	}
 
 	if userID == "" {
-		fmt.Println("ERROR: VALIDATION_FAILED: --user-id обязателен")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
 		return
 	}
 
@@ -380,7 +385,7 @@ func handleScrollOrders(storage storage.Storage, args []string) {
 		orders, nextLastID := ScrollOrders(storage, userID, lastID, limit)
 
 		for _, o := range orders {
-			fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format("2006-01-02"))
+			fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
 		}
 
 		if nextLastID != "" && nextLastID != lastID {
@@ -394,7 +399,7 @@ func handleScrollOrders(storage storage.Storage, args []string) {
 		fmt.Print("> ")
 		cmdLine, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Ошибка чтения ввода:", err)
+			logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка чтения")
 			break
 		}
 		cmdLine = strings.TrimSpace(cmdLine)
