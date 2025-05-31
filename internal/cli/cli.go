@@ -151,7 +151,7 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 		return
 	}
 	newOrder, err := AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
-	//TODO: спросить у джо байдена
+	//TODO: ВОТ ТАК НАДО ОШИБКИ СРАВНИВАТЬ которые приходят откуда-то
 	if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "вес слишком большой")
 	} else if err != nil {
@@ -275,7 +275,6 @@ func handleListOrders(ctx context.Context, storage storage.Storage, args []strin
 
 	orders := ListOrders(ctx, storage, userID, inPvzOnly, lastCount, page, limit)
 	for _, o := range orders {
-		//fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
 		fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
 	}
 	fmt.Printf("TOTAL: %d\n", len(orders))

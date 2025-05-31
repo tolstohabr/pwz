@@ -20,11 +20,6 @@ const (
 )
 
 // AcceptOrder добавить заказ в ПВЗ
-/*
-	PackageType PackageType `json:"package_type"`
-	Weight      float64     `json:"weight"`
-	Price       float64     `json:"price"`
-*/
 func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
