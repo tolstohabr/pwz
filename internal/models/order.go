@@ -35,40 +35,48 @@ type Order struct {
 	Price       float64     `json:"price"`
 }
 
-func (o *Order) CalculateTotalPrice() error {
+// расчёт всей стоимости
+func (o *Order) CalculateTotalPrice() {
+	switch o.PackageType {
+	case PackageBag:
+		o.Price += 5
+	case PackageBox:
+		o.Price += 20
+	case PackageFilm:
+		o.Price += 1
+	case PackageBagFilm:
+		o.Price += 6
+	case PackageBoxFilm:
+		o.Price += 21
+	}
+}
+
+// валидация веса
+func (o *Order) ValidationWeight() error {
 	switch o.PackageType {
 	case PackageNone:
 		return nil
 	case PackageBag:
 		if o.Weight >= 10 {
-			//o.PackageType = PackageNone
 			return domainErrors.ErrWeightTooHeavy
 		}
-		o.Price += 5
 		return nil
 	case PackageBox:
 		if o.Weight >= 30 {
-			//o.PackageType = PackageNone
 			return domainErrors.ErrWeightTooHeavy
 		}
-		o.Price += 20
 		return nil
 	case PackageFilm:
-		o.Price += 1
 		return nil
 	case PackageBagFilm:
 		if o.Weight >= 10 {
-			//o.PackageType = PackageNone
 			return domainErrors.ErrWeightTooHeavy
 		}
-		o.Price += 6
 		return nil
 	case PackageBoxFilm:
 		if o.Weight >= 30 {
-			//o.PackageType = PackageNone
 			return domainErrors.ErrWeightTooHeavy
 		}
-		o.Price += 21
 		return nil
 	default:
 		return domainErrors.ErrInvalidPackage

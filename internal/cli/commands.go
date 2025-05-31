@@ -25,20 +25,7 @@ const (
 	Weight      float64     `json:"weight"`
 	Price       float64     `json:"price"`
 */
-func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) error {
-	//если срок хранения в прошлом
-	if expiresAt.Before(time.Now()) {
-		return domainErrors.ErrValidationFailed
-	}
-
-	//если такой заказ уже есть
-	_, err := storage.GetOrder(orderID)
-	if err == nil {
-		return domainErrors.ErrOrderAlreadyExists
-	}
-
-	//price, err = models.CalculateTotalPrice(price, weight, package_type)
-
+func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,
@@ -49,16 +36,29 @@ func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID s
 		PackageType: package_type,
 	}
 
-	//newOrder.Price, err = models.CalculateTotalPrice(newOrder.Price, newOrder.Weight, newOrder.PackageType)
-
-	err = newOrder.CalculateTotalPrice()
-	if err != nil {
-		return err
+	//если срок хранения в прошлом
+	if expiresAt.Before(time.Now()) {
+		return newOrder, domainErrors.ErrValidationFailed
 	}
+
+	//если такой заказ уже есть
+	_, err := storage.GetOrder(orderID)
+	if err == nil {
+		return newOrder, domainErrors.ErrOrderAlreadyExists
+	}
+
+	//валидация веса
+	err = newOrder.ValidationWeight()
+	if err != nil {
+		return newOrder, err
+	}
+
+	//расчёт всей стоимости
+	newOrder.CalculateTotalPrice()
 
 	appendToHistory(ctx, orderID, models.StatusAccepted)
 
-	return storage.SaveOrder(newOrder)
+	return newOrder, storage.SaveOrder(newOrder)
 }
 
 // ReturnOrder удалить заказ

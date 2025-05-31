@@ -150,7 +150,7 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат даты")
 		return
 	}
-	err = AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
+	newOrder, err := AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
 	//TODO: спросить у джо байдена
 	if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "вес слишком большой")
@@ -160,7 +160,7 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 	} else {
 		fmt.Println("ORDER_ACCEPTED:", orderID)
 		fmt.Println("PACKAGE:", package_type)
-		fmt.Println("TOTAL_PRICE:", price)
+		fmt.Println("TOTAL_PRICE:", newOrder.Price)
 	}
 }
 
