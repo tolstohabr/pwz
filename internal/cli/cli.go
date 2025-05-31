@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -70,7 +71,7 @@ func printHelp() {
 	fmt.Println("Список команд:")
 	fmt.Println("  help")
 	fmt.Println("  accept-order     Принять заказ от курьера")
-	fmt.Println("  return-order     Вернуть заказ") //удалить
+	fmt.Println("  return-order     Вернуть заказ") //удалить значит
 	fmt.Println("  process-order   	Выдать или принять возврат")
 	fmt.Println("  list-orders    	Получить список заказов")
 	fmt.Println("  list-returns    	Получить список возвратов")
@@ -83,6 +84,8 @@ func printHelp() {
 // handleAcceptOrder Принять заказ от курьера
 func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args []string) {
 	var orderID, userID, expiresStr string
+	var weight, price float64
+	var package_type models.PackageType
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -101,7 +104,33 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 				expiresStr = args[i+1]
 				i++
 			}
+		case "--weight":
+			if i+1 < len(args) {
+				var err error
+				weight, err = strconv.ParseFloat(args[i+1], 64)
+				if err != nil || weight <= 0 {
+					logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "некорректный вес")
+					return
+				}
+				i++
+			}
+		case "--price":
+			if i+1 < len(args) {
+				var err error
+				price, err = strconv.ParseFloat(args[i+1], 64)
+				if err != nil || price <= 0 {
+					logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "некорректная цена")
+					return
+				}
+				i++
+			}
+		case "--package":
+			if i+1 < len(args) {
+				package_type = models.PackageType(args[i+1])
+				i++
+			}
 		}
+
 	}
 
 	switch {
@@ -121,13 +150,17 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат даты")
 		return
 	}
-
-	err = AcceptOrder(ctx, storage, orderID, userID, expiresAt)
-	if err != nil {
+	err = AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
+	//TODO: спросить у джо байдена
+	if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "вес слишком большой")
+	} else if err != nil {
 		logger.LogErrorWithCode(ctx, err, "такой заказ уже существует или срок хранения в прошлом")
 
 	} else {
 		fmt.Println("ORDER_ACCEPTED:", orderID)
+		fmt.Println("PACKAGE:", package_type)
+		fmt.Println("TOTAL_PRICE:", price)
 	}
 }
 
@@ -242,7 +275,8 @@ func handleListOrders(ctx context.Context, storage storage.Storage, args []strin
 
 	orders := ListOrders(ctx, storage, userID, inPvzOnly, lastCount, page, limit)
 	for _, o := range orders {
-		fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
+		//fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
+		fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
 	}
 	fmt.Printf("TOTAL: %d\n", len(orders))
 }
@@ -385,7 +419,7 @@ func handleScrollOrders(ctx context.Context, storage storage.Storage, args []str
 		orders, nextLastID := ScrollOrders(storage, userID, lastID, limit)
 
 		for _, o := range orders {
-			fmt.Printf("ORDER: %s %s %s %s\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat))
+			fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
 		}
 
 		if nextLastID != "" && nextLastID != lastID {
