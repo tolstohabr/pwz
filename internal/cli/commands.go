@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	//"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
 	"PWZ1.0/internal/storage"
@@ -29,6 +30,11 @@ func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID s
 		Weight:      weight,
 		Price:       price,
 		PackageType: package_type,
+	}
+
+	//валидна ли упаковка
+	if !IsValidPackage(package_type) {
+		return newOrder, domainErrors.ErrInvalidPackage
 	}
 
 	//если срок хранения в прошлом
@@ -54,6 +60,15 @@ func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID s
 	appendToHistory(ctx, orderID, models.StatusAccepted)
 
 	return newOrder, storage.SaveOrder(newOrder)
+}
+
+// IsValidPackage валидна ли упаковка
+func IsValidPackage(pkg models.PackageType) bool {
+	switch pkg {
+	case models.PackageBag, models.PackageBox, models.PackageFilm, models.PackageBagFilm, models.PackageBoxFilm, models.PackageNone:
+		return true
+	}
+	return false
 }
 
 // ReturnOrder удалить заказ

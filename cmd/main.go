@@ -19,16 +19,3 @@ func main() {
 	logger.InitLogger()
 	cli.Run(storage, scanner)
 }
-
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ
-//TODO: ЧЕКПОИНТ

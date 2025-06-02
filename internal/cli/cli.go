@@ -151,9 +151,11 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 		return
 	}
 	newOrder, err := AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
-	//TODO: ВОТ ТАК НАДО ОШИБКИ СРАВНИВАТЬ которые приходят откуда-то
-	if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "вес слишком большой")
+	if errors.Is(err, domainErrors.ErrInvalidPackage) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrInvalidPackage, "некорректная упаковка")
+	} else if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrWeightTooHeavy, "вес слишком большой")
+
 	} else if err != nil {
 		logger.LogErrorWithCode(ctx, err, "такой заказ уже существует или срок хранения в прошлом")
 
