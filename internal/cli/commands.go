@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	//"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
 	"PWZ1.0/internal/storage"
@@ -20,28 +21,54 @@ const (
 )
 
 // AcceptOrder добавить заказ в ПВЗ
-func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, expiresAt time.Time) error {
+func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
+	newOrder := models.Order{
+		ID:          orderID,
+		UserID:      userID,
+		ExpiresAt:   expiresAt,
+		Status:      models.StatusAccepted,
+		Weight:      weight,
+		Price:       price,
+		PackageType: package_type,
+	}
+
+	//валидна ли упаковка
+	if !IsValidPackage(package_type) {
+		return newOrder, domainErrors.ErrInvalidPackage
+	}
+
 	//если срок хранения в прошлом
 	if expiresAt.Before(time.Now()) {
-		return domainErrors.ErrValidationFailed
+		return newOrder, domainErrors.ErrValidationFailed
 	}
 
 	//если такой заказ уже есть
 	_, err := storage.GetOrder(orderID)
 	if err == nil {
-		return domainErrors.ErrOrderAlreadyExists
+		return newOrder, domainErrors.ErrOrderAlreadyExists
 	}
 
-	newOrder := models.Order{
-		ID:        orderID,
-		UserID:    userID,
-		ExpiresAt: expiresAt,
-		Status:    models.StatusAccepted,
+	//валидация веса
+	err = newOrder.ValidationWeight()
+	if err != nil {
+		return newOrder, err
 	}
+
+	//расчёт всей стоимости
+	newOrder.CalculateTotalPrice()
 
 	appendToHistory(ctx, orderID, models.StatusAccepted)
 
-	return storage.SaveOrder(newOrder)
+	return newOrder, storage.SaveOrder(newOrder)
+}
+
+// IsValidPackage валидна ли упаковка
+func IsValidPackage(pkg models.PackageType) bool {
+	switch pkg {
+	case models.PackageBag, models.PackageBox, models.PackageFilm, models.PackageBagFilm, models.PackageBoxFilm, models.PackageNone:
+		return true
+	}
+	return false
 }
 
 // ReturnOrder удалить заказ

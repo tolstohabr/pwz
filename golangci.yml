@@ -1,0 +1,10 @@
+linters:
+  disable-all: true
+  enable:
+    - goimports    # ide это делает автоматически
+    - errcheck
+    - ineffassign
+    - unused
+    - goconst
+    - gocyclo
+    #gocognit
