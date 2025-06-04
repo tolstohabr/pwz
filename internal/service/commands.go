@@ -1,4 +1,4 @@
-package cli
+package service
 
 import (
 	"context"
@@ -17,11 +17,33 @@ import (
 
 const (
 	expiredTime    = 48 * time.Hour
-	dateTimeFormat = "2006-01-02 15:04:05"
+	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
+type OrderService interface {
+	AcceptOrder(ctx context.Context, orderID, userID string, weight, price float64, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
+	ReturnOrder(orderID string) error
+	ProcessOrders(ctx context.Context, userID string, action string, orderIDs []string) []string
+	ListOrders(ctx context.Context, userID string, inPvzOnly bool, lastCount, page, limit int) []models.Order
+	ListReturns(page, limit int) []models.Order
+	ScrollOrders(userID, lastID string, limit int) ([]models.Order, string)
+	SaveOrder(order models.Order) error
+}
+
+type orderService struct {
+	storage storage.Storage
+}
+
+func NewOrderService(storage storage.Storage) OrderService {
+	return &orderService{storage: storage}
+}
+
+func (s *orderService) SaveOrder(order models.Order) error {
+	return s.storage.SaveOrder(order)
+}
+
 // AcceptOrder добавить заказ в ПВЗ
-func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
+func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,
@@ -43,7 +65,7 @@ func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID s
 	}
 
 	//если такой заказ уже есть
-	_, err := storage.GetOrder(orderID)
+	_, err := s.storage.GetOrder(orderID)
 	if err == nil {
 		return newOrder, domainErrors.ErrOrderAlreadyExists
 	}
@@ -59,7 +81,7 @@ func AcceptOrder(ctx context.Context, storage storage.Storage, orderID, userID s
 
 	appendToHistory(ctx, orderID, models.StatusAccepted)
 
-	return newOrder, storage.SaveOrder(newOrder)
+	return newOrder, s.storage.SaveOrder(newOrder)
 }
 
 // IsValidPackage валидна ли упаковка
@@ -72,8 +94,8 @@ func IsValidPackage(pkg models.PackageType) bool {
 }
 
 // ReturnOrder удалить заказ
-func ReturnOrder(storage storage.Storage, orderID string) error {
-	order, err := storage.GetOrder(orderID)
+func (s *orderService) ReturnOrder(orderID string) error {
+	order, err := s.storage.GetOrder(orderID)
 	if err != nil {
 		return err
 	}
@@ -85,7 +107,7 @@ func ReturnOrder(storage storage.Storage, orderID string) error {
 
 	//если заказ в ПВЗ после возврата
 	if order.Status == models.StatusReturned {
-		return storage.DeleteOrder(orderID)
+		return s.storage.DeleteOrder(orderID)
 	}
 
 	//если время хранения не истекло
@@ -93,14 +115,14 @@ func ReturnOrder(storage storage.Storage, orderID string) error {
 		return domainErrors.ErrStorageNotExpired
 	}
 
-	return storage.DeleteOrder(orderID)
+	return s.storage.DeleteOrder(orderID)
 }
 
 // ProcessOrders обработать выдачу или возврат заказа
-func ProcessOrders(ctx context.Context, storage storage.Storage, userID string, action string, orderIDs []string) []string {
+func (s *orderService) ProcessOrders(ctx context.Context, userID string, action string, orderIDs []string) []string {
 	var results []string
 	for _, id := range orderIDs {
-		order, err := storage.GetOrder(id)
+		order, err := s.storage.GetOrder(id)
 		if err != nil {
 			results = append(results, fmt.Sprintf("ERROR %s: ORDER_NOT_FOUND: заказ не найден", id))
 			continue
@@ -132,7 +154,7 @@ func ProcessOrders(ctx context.Context, storage storage.Storage, userID string, 
 			continue
 		}
 
-		_ = storage.UpdateOrder(order)
+		_ = s.storage.UpdateOrder(order)
 
 		results = append(results, fmt.Sprintf("PROCESSED: %s", id))
 	}
@@ -140,13 +162,13 @@ func ProcessOrders(ctx context.Context, storage storage.Storage, userID string, 
 }
 
 // ListOrders вывести список заказов
-func ListOrders(ctx context.Context, storage storage.Storage, userID string, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
+func (s *orderService) ListOrders(ctx context.Context, userID string, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
 	if limit <= 0 {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
 		return nil
 	}
 
-	allOrders, err := storage.ListOrders()
+	allOrders, err := s.storage.ListOrders()
 	if err != nil {
 		return []models.Order{}
 	}
@@ -183,8 +205,8 @@ func ListOrders(ctx context.Context, storage storage.Storage, userID string, inP
 }
 
 // ListReturns вывести список возвратов
-func ListReturns(storage storage.Storage, page int, limit int) []models.Order {
-	allOrders, err := storage.ListOrders()
+func (s *orderService) ListReturns(page int, limit int) []models.Order {
+	allOrders, err := s.storage.ListOrders()
 	if err != nil {
 		return []models.Order{}
 	}
@@ -216,7 +238,7 @@ func appendToHistory(ctx context.Context, orderID string, status models.OrderSta
 	record := map[string]string{
 		"order_id":  orderID,
 		"status":    string(status),
-		"timestamp": time.Now().Format(dateTimeFormat),
+		"timestamp": time.Now().Format(DateTimeFormat),
 	}
 
 	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -240,8 +262,8 @@ func appendToHistory(ctx context.Context, orderID string, status models.OrderSta
 }
 
 // ScrollOrders прокрутка
-func ScrollOrders(storage storage.Storage, userID string, lastID string, limit int) ([]models.Order, string) {
-	allOrders, err := storage.ListOrders()
+func (s *orderService) ScrollOrders(userID string, lastID string, limit int) ([]models.Order, string) {
+	allOrders, err := s.storage.ListOrders()
 	if err != nil {
 		return []models.Order{}, ""
 	}

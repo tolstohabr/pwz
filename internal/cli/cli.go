@@ -13,8 +13,8 @@ import (
 
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
+	"PWZ1.0/internal/service"
 
-	"PWZ1.0/internal/storage"
 	"PWZ1.0/internal/tools/logger"
 )
 
@@ -22,16 +22,27 @@ const (
 	dateFormat = "2006-01-02"
 )
 
-func Run(storage *storage.FileStorage, scanner *bufio.Scanner) {
-	ctx := context.Background()
+type CLI struct {
+	orderService service.OrderService
+	scanner      *bufio.Scanner
+}
 
+func NewCLI(orderService service.OrderService, scanner *bufio.Scanner) *CLI {
+	return &CLI{
+		orderService: orderService,
+		scanner:      scanner,
+	}
+}
+
+func (c *CLI) Run() {
+	ctx := context.Background()
 	for {
 		fmt.Print("> ")
-		if !scanner.Scan() {
+		if !c.scanner.Scan() {
 			break
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input := strings.TrimSpace(c.scanner.Text())
 		if input == "" {
 			continue
 		}
@@ -46,21 +57,21 @@ func Run(storage *storage.FileStorage, scanner *bufio.Scanner) {
 		case "help":
 			printHelp()
 		case "accept-order":
-			handleAcceptOrder(ctx, storage, args[1:])
+			handleAcceptOrder(ctx, c.orderService, args[1:])
 		case "return-order":
-			handleReturnOrder(ctx, storage, args[1:])
+			handleReturnOrder(ctx, c.orderService, args[1:])
 		case "process-order":
-			handleProcessOrders(ctx, storage, args[1:])
+			handleProcessOrders(ctx, c.orderService, args[1:])
 		case "list-orders":
-			handleListOrders(ctx, storage, args[1:])
+			handleListOrders(ctx, c.orderService, args[1:])
 		case "list-returns":
-			handleListReturns(storage, args[1:])
+			handleListReturns(c.orderService, args[1:])
 		case "order-history":
 			handleOrderHistory(ctx)
 		case "import-orders":
-			handleImportOrders(ctx, storage, args[1:])
+			handleImportOrders(ctx, c.orderService, args[1:])
 		case "scroll-orders":
-			handleScrollOrders(ctx, storage, args[1:])
+			handleScrollOrders(ctx, c.orderService, args[1:])
 		default:
 			fmt.Println("Неизвестная команда")
 		}
@@ -82,7 +93,7 @@ func printHelp() {
 }
 
 // handleAcceptOrder Принять заказ от курьера
-func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args []string) {
+func handleAcceptOrder(ctx context.Context, orderService service.OrderService, args []string) {
 	var orderID, userID, expiresStr string
 	var weight, price float64
 	var package_type models.PackageType
@@ -150,7 +161,7 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат даты")
 		return
 	}
-	newOrder, err := AcceptOrder(ctx, storage, orderID, userID, weight, price, expiresAt, package_type)
+	newOrder, err := orderService.AcceptOrder(ctx, orderID, userID, weight, price, expiresAt, package_type)
 	if errors.Is(err, domainErrors.ErrInvalidPackage) {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrInvalidPackage, "некорректная упаковка")
 	} else if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
@@ -167,7 +178,7 @@ func handleAcceptOrder(ctx context.Context, storage *storage.FileStorage, args [
 }
 
 // handleReturnOrder Вернуть заказ
-func handleReturnOrder(ctx context.Context, storage *storage.FileStorage, args []string) {
+func handleReturnOrder(ctx context.Context, orderService service.OrderService, args []string) {
 	var orderID string
 
 	for i := 0; i < len(args); i++ {
@@ -182,7 +193,7 @@ func handleReturnOrder(ctx context.Context, storage *storage.FileStorage, args [
 		return
 	}
 
-	err := ReturnOrder(storage, orderID)
+	err := orderService.ReturnOrder(orderID)
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "заказ у клиента или время хранения еще не истекло")
 	} else {
@@ -191,7 +202,7 @@ func handleReturnOrder(ctx context.Context, storage *storage.FileStorage, args [
 }
 
 // handleProcessOrders Выдать или принять возврат
-func handleProcessOrders(ctx context.Context, storage storage.Storage, args []string) {
+func handleProcessOrders(ctx context.Context, orderService service.OrderService, args []string) {
 	var userID, action, orderIDsStr string
 
 	for i := 0; i < len(args); i++ {
@@ -220,7 +231,7 @@ func handleProcessOrders(ctx context.Context, storage storage.Storage, args []st
 	}
 
 	orderIDs := strings.Split(orderIDsStr, ",")
-	results := ProcessOrders(ctx, storage, userID, action, orderIDs)
+	results := orderService.ProcessOrders(ctx, userID, action, orderIDs)
 
 	for _, res := range results {
 		fmt.Println(res)
@@ -228,7 +239,7 @@ func handleProcessOrders(ctx context.Context, storage storage.Storage, args []st
 }
 
 // handleListOrders Получить список заказов
-func handleListOrders(ctx context.Context, storage storage.Storage, args []string) {
+func handleListOrders(ctx context.Context, orderService service.OrderService, args []string) {
 	var userID string
 	var inPvzOnly bool
 	var lastCount int
@@ -275,7 +286,7 @@ func handleListOrders(ctx context.Context, storage storage.Storage, args []strin
 		return
 	}
 
-	orders := ListOrders(ctx, storage, userID, inPvzOnly, lastCount, page, limit)
+	orders := orderService.ListOrders(ctx, userID, inPvzOnly, lastCount, page, limit)
 	for _, o := range orders {
 		fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
 	}
@@ -283,7 +294,7 @@ func handleListOrders(ctx context.Context, storage storage.Storage, args []strin
 }
 
 // handleListReturns Получить список возвратов
-func handleListReturns(storage storage.Storage, args []string) {
+func handleListReturns(orderService service.OrderService, args []string) {
 	var err error
 	var page, limit int
 	page = 0
@@ -307,11 +318,11 @@ func handleListReturns(storage storage.Storage, args []string) {
 		}
 	}
 
-	returns := ListReturns(storage, page, limit)
+	returns := orderService.ListReturns(page, limit)
 	for _, o := range returns {
 		returnedAt := "Нет данных"
 		if o.IssuedAt != nil {
-			returnedAt = o.IssuedAt.Format(dateTimeFormat)
+			returnedAt = o.IssuedAt.Format(service.DateTimeFormat)
 		}
 		fmt.Printf("RETURN: %s %s %s\n", o.ID, o.UserID, returnedAt)
 	}
@@ -344,7 +355,7 @@ func handleOrderHistory(ctx context.Context) {
 }
 
 // handleImportOrders Импорт заказов из файла
-func handleImportOrders(ctx context.Context, storage storage.Storage, args []string) {
+func handleImportOrders(ctx context.Context, orderService service.OrderService, args []string) {
 	var filePath string
 
 	for i := 0; i < len(args); i++ {
@@ -360,7 +371,7 @@ func handleImportOrders(ctx context.Context, storage storage.Storage, args []str
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "параметр --file обязателен")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "не удалось прочитать файл")
 		return
 	}
 
@@ -373,7 +384,7 @@ func handleImportOrders(ctx context.Context, storage storage.Storage, args []str
 
 	imported := 0
 	for _, o := range orders {
-		err := storage.SaveOrder(o)
+		err := orderService.SaveOrder(o)
 		if err != nil {
 			fmt.Printf("ERROR: IMPORT_FAILED: не удалось импортировать заказ %s: %v\n", o.ID, err)
 			continue
@@ -385,7 +396,7 @@ func handleImportOrders(ctx context.Context, storage storage.Storage, args []str
 }
 
 // handleScrollOrders прокрутка
-func handleScrollOrders(ctx context.Context, storage storage.Storage, args []string) {
+func handleScrollOrders(ctx context.Context, orderService service.OrderService, args []string) {
 	var userID string
 	var limit = 20
 
@@ -417,7 +428,7 @@ func handleScrollOrders(ctx context.Context, storage storage.Storage, args []str
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		orders, nextLastID := ScrollOrders(storage, userID, lastID, limit)
+		orders, nextLastID := orderService.ScrollOrders(userID, lastID, limit)
 
 		for _, o := range orders {
 			fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
