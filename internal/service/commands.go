@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	//"PWZ1.0/internal/models"
@@ -16,17 +17,17 @@ import (
 )
 
 const (
-	expiredTime    = 48 * time.Hour
+	ExpiredTime    = 48 * time.Hour
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
 type OrderService interface {
-	AcceptOrder(ctx context.Context, orderID, userID string, weight, price float64, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
-	ReturnOrder(orderID string) error
-	ProcessOrders(ctx context.Context, userID string, action string, orderIDs []string) []string
-	ListOrders(ctx context.Context, userID string, inPvzOnly bool, lastCount, page, limit int) []models.Order
+	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float64, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
+	ReturnOrder(orderID uint64) error
+	ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string
+	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit int) []models.Order
 	ListReturns(page, limit int) []models.Order
-	ScrollOrders(userID, lastID string, limit int) ([]models.Order, string)
+	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
 }
 
@@ -43,7 +44,7 @@ func (s *orderService) SaveOrder(order models.Order) error {
 }
 
 // AcceptOrder добавить заказ в ПВЗ
-func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID string, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
+func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,
@@ -94,7 +95,7 @@ func IsValidPackage(pkg models.PackageType) bool {
 }
 
 // ReturnOrder удалить заказ
-func (s *orderService) ReturnOrder(orderID string) error {
+func (s *orderService) ReturnOrder(orderID uint64) error {
 	order, err := s.storage.GetOrder(orderID)
 	if err != nil {
 		return err
@@ -119,50 +120,51 @@ func (s *orderService) ReturnOrder(orderID string) error {
 }
 
 // ProcessOrders обработать выдачу или возврат заказа
-func (s *orderService) ProcessOrders(ctx context.Context, userID string, action string, orderIDs []string) []string {
+func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string {
 	var results []string
 	for _, id := range orderIDs {
 		order, err := s.storage.GetOrder(id)
 		if err != nil {
-			results = append(results, fmt.Sprintf("ERROR %s: ORDER_NOT_FOUND: заказ не найден", id))
+			results = append(results, fmt.Sprintf("ERROR %d: ORDER_NOT_FOUND: заказ не найден", id))
 			continue
 		}
 
 		if order.UserID != userID {
-			results = append(results, fmt.Sprintf("ERROR %s: USER_MISMATCH: несоответствие ID", id))
+			results = append(results, fmt.Sprintf("ERROR %d: USER_MISMATCH: несоответствие ID", id))
 			continue
 		}
 
 		if action == "issue" {
 			if time.Now().After(order.ExpiresAt) {
-				results = append(results, fmt.Sprintf("ERROR %s: STORAGE_EXPIRED: срок хранения истёк", id))
+				results = append(results, fmt.Sprintf("ERROR %d: STORAGE_EXPIRED: срок хранения истёк", id))
 				continue
 			}
-			now := time.Now()
 			order.Status = models.StatusIssued
-			order.IssuedAt = &now
+			// тут обновлю ExpiresAt на текущее время + 48 часов вместо IssuedAt
+			order.ExpiresAt = time.Now().Add(ExpiredTime)
 			appendToHistory(ctx, order.ID, models.StatusIssued)
 		} else if action == "return" {
-			if order.IssuedAt == nil || time.Since(*order.IssuedAt) > expiredTime {
-				results = append(results, fmt.Sprintf("ERROR %s: RETURN_TIME_EXPIRED: время на возврат истекло", id))
+			// Проверяем, не истёк ли новый срок возврата (ExpiresAt)
+			if time.Now().After(order.ExpiresAt) {
+				results = append(results, fmt.Sprintf("ERROR %d: RETURN_TIME_EXPIRED: время на возврат истекло", id))
 				continue
 			}
 			order.Status = models.StatusReturned
 			appendToHistory(ctx, order.ID, models.StatusReturned)
 		} else {
-			results = append(results, fmt.Sprintf("ERROR %s: INVALID_ACTION: непредусмотренное действие", id))
+			results = append(results, fmt.Sprintf("ERROR %d: INVALID_ACTION: непредусмотренное действие", id))
 			continue
 		}
 
 		_ = s.storage.UpdateOrder(order)
 
-		results = append(results, fmt.Sprintf("PROCESSED: %s", id))
+		results = append(results, fmt.Sprintf("PROCESSED: %d", id))
 	}
 	return results
 }
 
 // ListOrders вывести список заказов
-func (s *orderService) ListOrders(ctx context.Context, userID string, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
+func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
 	if limit <= 0 {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
 		return nil
@@ -234,9 +236,10 @@ func (s *orderService) ListReturns(page int, limit int) []models.Order {
 }
 
 // appendToHistory для добавления записи об изменении статуса в json-ку
-func appendToHistory(ctx context.Context, orderID string, status models.OrderStatus) {
+func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
 	record := map[string]string{
-		"order_id":  orderID,
+		//"order_id":  orderID,
+		"order_id":  strconv.FormatUint(orderID, 10),
 		"status":    string(status),
 		"timestamp": time.Now().Format(DateTimeFormat),
 	}
@@ -262,10 +265,10 @@ func appendToHistory(ctx context.Context, orderID string, status models.OrderSta
 }
 
 // ScrollOrders прокрутка
-func (s *orderService) ScrollOrders(userID string, lastID string, limit int) ([]models.Order, string) {
+func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]models.Order, uint64) {
 	allOrders, err := s.storage.ListOrders()
 	if err != nil {
-		return []models.Order{}, ""
+		return []models.Order{}, 0
 	}
 
 	userOrders := make([]models.Order, 0)
@@ -281,7 +284,7 @@ func (s *orderService) ScrollOrders(userID string, lastID string, limit int) ([]
 
 	// найти индекс последнего заказа с lastID
 	startIdx := 0
-	if lastID != "0" && lastID != "" {
+	if lastID != 0 {
 		for i, o := range userOrders {
 			if o.ID == lastID {
 				startIdx = i + 1
@@ -298,7 +301,7 @@ func (s *orderService) ScrollOrders(userID string, lastID string, limit int) ([]
 
 	result := userOrders[startIdx:endIdx]
 
-	nextLastID := ""
+	var nextLastID uint64
 	if len(result) > 0 {
 		nextLastID = result[len(result)-1].ID
 	}

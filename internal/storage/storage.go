@@ -10,8 +10,8 @@ import (
 
 type Storage interface {
 	SaveOrder(order models.Order) error
-	GetOrder(id string) (models.Order, error)
-	DeleteOrder(id string) error
+	GetOrder(id uint64) (models.Order, error)
+	DeleteOrder(id uint64) error
 	ListOrders() ([]models.Order, error)
 	UpdateOrder(order models.Order) error
 }
@@ -84,7 +84,7 @@ func (fs *FileStorage) UpdateOrder(order models.Order) error {
 	return fs.save(orders)
 }
 
-func (fs *FileStorage) GetOrder(id string) (models.Order, error) {
+func (fs *FileStorage) GetOrder(id uint64) (models.Order, error) {
 	orders, err := fs.load()
 	if err != nil {
 		return models.Order{}, err
@@ -99,7 +99,7 @@ func (fs *FileStorage) GetOrder(id string) (models.Order, error) {
 	return models.Order{}, domainErrors.ErrOrderNotFound
 }
 
-func (fs *FileStorage) DeleteOrder(id string) error {
+func (fs *FileStorage) DeleteOrder(id uint64) error {
 	orders, err := fs.load()
 	if err != nil {
 		return err

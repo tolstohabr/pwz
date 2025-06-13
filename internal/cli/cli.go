@@ -94,20 +94,21 @@ func printHelp() {
 
 // handleAcceptOrder Принять заказ от курьера
 func handleAcceptOrder(ctx context.Context, orderService service.OrderService, args []string) {
-	var orderID, userID, expiresStr string
+	var orderIDStr, userIDStr, expiresStr string
+	var orderID, userID uint64
 	var weight, price float64
-	var package_type models.PackageType
+	var packageType models.PackageType
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--order-id":
 			if i+1 < len(args) {
-				orderID = args[i+1]
+				orderIDStr = args[i+1]
 				i++
 			}
 		case "--user-id":
 			if i+1 < len(args) {
-				userID = args[i+1]
+				userIDStr = args[i+1]
 				i++
 			}
 		case "--expires":
@@ -137,22 +138,34 @@ func handleAcceptOrder(ctx context.Context, orderService service.OrderService, a
 			}
 		case "--package":
 			if i+1 < len(args) {
-				package_type = models.PackageType(args[i+1])
+				packageType = models.PackageType(args[i+1])
 				i++
 			}
 		}
-
 	}
 
 	switch {
-	case orderID == "":
+	case orderIDStr == "":
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует orderID")
 		return
-	case userID == "":
+	case userIDStr == "":
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
 		return
 	case expiresStr == "":
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует expiresStr")
+		return
+	}
+
+	var err error
+	orderID, err = strconv.ParseUint(orderIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "orderID должен быть числом")
+		return
+	}
+
+	userID, err = strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "userID должен быть числом")
 		return
 	}
 
@@ -161,39 +174,44 @@ func handleAcceptOrder(ctx context.Context, orderService service.OrderService, a
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат даты")
 		return
 	}
-	newOrder, err := orderService.AcceptOrder(ctx, orderID, userID, weight, price, expiresAt, package_type)
+
+	newOrder, err := orderService.AcceptOrder(ctx, orderID, userID, weight, price, expiresAt, packageType)
 	if errors.Is(err, domainErrors.ErrInvalidPackage) {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrInvalidPackage, "некорректная упаковка")
 	} else if errors.Is(err, domainErrors.ErrWeightTooHeavy) {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrWeightTooHeavy, "вес слишком большой")
-
 	} else if err != nil {
 		logger.LogErrorWithCode(ctx, err, "такой заказ уже существует или срок хранения в прошлом")
-
 	} else {
 		fmt.Println("ORDER_ACCEPTED:", orderID)
-		fmt.Println("PACKAGE:", package_type)
+		fmt.Println("PACKAGE:", packageType)
 		fmt.Println("TOTAL_PRICE:", newOrder.Price)
 	}
 }
 
 // handleReturnOrder Вернуть заказ
 func handleReturnOrder(ctx context.Context, orderService service.OrderService, args []string) {
-	var orderID string
+	var orderIDStr string
 
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--order-id" && i+1 < len(args) {
-			orderID = args[i+1]
+			orderIDStr = args[i+1]
 			i++
 		}
 	}
 
-	if orderID == "" {
+	if orderIDStr == "" {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует orderID")
 		return
 	}
 
-	err := orderService.ReturnOrder(orderID)
+	orderID, err := strconv.ParseUint(orderIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неверный формат orderID")
+		return
+	}
+
+	err = orderService.ReturnOrder(orderID)
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "заказ у клиента или время хранения еще не истекло")
 	} else {
@@ -203,13 +221,13 @@ func handleReturnOrder(ctx context.Context, orderService service.OrderService, a
 
 // handleProcessOrders Выдать или принять возврат
 func handleProcessOrders(ctx context.Context, orderService service.OrderService, args []string) {
-	var userID, action, orderIDsStr string
+	var userIDStr, action, orderIDsStr string
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--user-id":
 			if i+1 < len(args) {
-				userID = args[i+1]
+				userIDStr = args[i+1]
 				i++
 			}
 		case "--action":
@@ -225,12 +243,33 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 		}
 	}
 
-	if userID == "" || action == "" || orderIDsStr == "" {
+	if userIDStr == "" || action == "" || orderIDsStr == "" {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствуют необходимые параметры")
 		return
 	}
 
-	orderIDs := strings.Split(orderIDsStr, ",")
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "userID должен быть числом")
+		return
+	}
+
+	orderIDsStrSlice := strings.Split(orderIDsStr, ",")
+	orderIDs := make([]uint64, 0, len(orderIDsStrSlice))
+
+	for _, idStr := range orderIDsStrSlice {
+		idStr = strings.TrimSpace(idStr)
+		if idStr == "" {
+			continue
+		}
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, fmt.Sprintf("некорректный orderID: %s", idStr))
+			return
+		}
+		orderIDs = append(orderIDs, id)
+	}
+
 	results := orderService.ProcessOrders(ctx, userID, action, orderIDs)
 
 	for _, res := range results {
@@ -240,7 +279,8 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 
 // handleListOrders Получить список заказов
 func handleListOrders(ctx context.Context, orderService service.OrderService, args []string) {
-	var userID string
+	var userIDStr string
+	var userID uint64
 	var inPvzOnly bool
 	var lastCount int
 	var page, limit int
@@ -249,7 +289,7 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 		switch args[i] {
 		case "--user-id":
 			if i+1 < len(args) {
-				userID = args[i+1]
+				userIDStr = args[i+1]
 				i++
 			}
 		case "--in-pvz":
@@ -281,14 +321,29 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 		}
 	}
 
-	if userID == "" {
+	if userIDStr == "" {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
+		return
+	}
+
+	var err error
+	userID, err = strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "userID должен быть числом")
 		return
 	}
 
 	orders := orderService.ListOrders(ctx, userID, inPvzOnly, lastCount, page, limit)
 	for _, o := range orders {
-		fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
+		fmt.Printf("ORDER: %d %d %s %s %s %.2f %.2f\n",
+			o.ID,
+			o.UserID,
+			o.Status,
+			o.ExpiresAt.Format(dateFormat),
+			o.PackageType,
+			o.Weight,
+			o.Price,
+		)
 	}
 	fmt.Printf("TOTAL: %d\n", len(orders))
 }
@@ -320,11 +375,16 @@ func handleListReturns(orderService service.OrderService, args []string) {
 
 	returns := orderService.ListReturns(page, limit)
 	for _, o := range returns {
+		//TODO: удалить потом мусор
+		/*было
 		returnedAt := "Нет данных"
 		if o.IssuedAt != nil {
 			returnedAt = o.IssuedAt.Format(service.DateTimeFormat)
 		}
-		fmt.Printf("RETURN: %s %s %s\n", o.ID, o.UserID, returnedAt)
+		fmt.Printf("RETURN: %s %s %s\n", o.ID, o.UserID, returnedAt)*/
+		//стало
+		approxReturnTime := o.ExpiresAt.Add(-service.ExpiredTime)
+		fmt.Printf("RETURN: %d %d %s\n", o.ID, o.UserID, approxReturnTime.Format(service.DateTimeFormat))
 	}
 	fmt.Printf("PAGE: %d LIMIT: %d\n", page, limit)
 }
@@ -397,14 +457,14 @@ func handleImportOrders(ctx context.Context, orderService service.OrderService, 
 
 // handleScrollOrders прокрутка
 func handleScrollOrders(ctx context.Context, orderService service.OrderService, args []string) {
-	var userID string
-	var limit = 20
+	var userIDStr string
+	limit := 20
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--user-id":
 			if i+1 < len(args) {
-				userID = args[i+1]
+				userIDStr = args[i+1]
 				i++
 			}
 		case "--limit":
@@ -418,12 +478,18 @@ func handleScrollOrders(ctx context.Context, orderService service.OrderService, 
 		}
 	}
 
-	if userID == "" {
+	if userIDStr == "" {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствует userID")
 		return
 	}
 
-	lastID := "0"
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "userID должен быть числом")
+		return
+	}
+
+	var lastID uint64 = 0
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -431,11 +497,19 @@ func handleScrollOrders(ctx context.Context, orderService service.OrderService, 
 		orders, nextLastID := orderService.ScrollOrders(userID, lastID, limit)
 
 		for _, o := range orders {
-			fmt.Printf("ORDER: %s %s %s %s %s %f %f\n", o.ID, o.UserID, o.Status, o.ExpiresAt.Format(dateFormat), o.PackageType, o.Weight, o.Price)
+			fmt.Printf("ORDER: %d %d %s %s %s %.2f %.2f\n",
+				o.ID,
+				o.UserID,
+				o.Status,
+				o.ExpiresAt.Format(dateFormat),
+				o.PackageType,
+				o.Weight,
+				o.Price,
+			)
 		}
 
-		if nextLastID != "" && nextLastID != lastID {
-			fmt.Printf("NEXT: %s\n", nextLastID)
+		if nextLastID != 0 && nextLastID != lastID {
+			fmt.Printf("NEXT: %d\n", nextLastID)
 		} else {
 			fmt.Println("NEXT: ")
 			fmt.Println("Больше заказов нет")
