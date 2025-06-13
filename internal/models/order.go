@@ -24,11 +24,10 @@ const (
 )
 
 type Order struct {
-	ID        uint64      `json:"id"`
-	UserID    uint64      `json:"user_id"`
-	ExpiresAt time.Time   `json:"expires_at"` //время до которого заказ можно выдать
-	Status    OrderStatus `json:"status"`
-	//IssuedAt    *time.Time  `json:"issued_at,omitempty"` //время когда заказ был выдан клиенту
+	ID          uint64      `json:"id"`
+	UserID      uint64      `json:"user_id"`
+	ExpiresAt   time.Time   `json:"expires_at"` //время до которого заказ можно выдать
+	Status      OrderStatus `json:"status"`
 	PackageType PackageType `json:"package_type"`
 	Weight      float64     `json:"weight"`
 	Price       float64     `json:"price"`
@@ -47,6 +46,8 @@ func (o *Order) CalculateTotalPrice() {
 		o.Price += 6
 	case PackageBoxFilm:
 		o.Price += 21
+	case PackageNone:
+		o.Price += 0
 	}
 }
 

@@ -2,7 +2,7 @@ package order
 
 import (
 	"PWZ1.0/internal/service"
-	desc "PWZ1.0/pkg/order" //деском обзывают то что из pkg подтягивают
+	desc "PWZ1.0/pkg/order"
 )
 
 type Implementation struct {
@@ -10,6 +10,6 @@ type Implementation struct {
 	orderService service.OrderService
 }
 
-func New() *Implementation {
-	return &Implementation{}
+func New(orderService service.OrderService) *Implementation {
+	return &Implementation{orderService: orderService}
 }
