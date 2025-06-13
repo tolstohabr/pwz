@@ -20,7 +20,7 @@ func main() {
 
 	storage := storage.NewFileStorage("orders.json")
 	orderService := service.NewOrderService(storage)
-	orderServer := order.New(orderService)
+	orderServer := order.NewHandler(orderService)
 
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)

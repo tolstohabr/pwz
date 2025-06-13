@@ -18,5 +18,5 @@ func (i *Implementation) SendMessage(ctx context.Context, req *desc.MessageReque
 	}
 
 	log.Printf("SendMessage: %v", req)
-	return &desc.MessageResponse{Id: uuid.New().ID()}, nil //uuid.New().ID() тут просто генерируем рандомный id
+	return &desc.MessageResponse{Id: uuid.New().ID()}, nil //uuid.NewHandler().ID() тут просто генерируем рандомный id
 }

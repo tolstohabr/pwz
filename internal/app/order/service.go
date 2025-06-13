@@ -10,6 +10,6 @@ type Implementation struct {
 	orderService service.OrderService
 }
 
-func New(orderService service.OrderService) *Implementation {
+func NewHandler(orderService service.OrderService) *Implementation {
 	return &Implementation{orderService: orderService}
 }
