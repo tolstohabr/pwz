@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	desc "PWZ1.0/pkg/order"
+	desc "PWZ1.0/pkg/pwz"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 )

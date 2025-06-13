@@ -4,7 +4,7 @@ package notifier;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "PWZ1.0/pkg/order";
+option go_package = "PWZ1.0/pkg/pwz";
 
 message MessageRequest {
   string text = 1;

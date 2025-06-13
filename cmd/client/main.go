@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	desc "PWZ1.0/pkg/order"
+	desc "PWZ1.0/pkg/pwz"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -43,7 +43,7 @@ func main() {
 	client = desc.NewNotifierClient(conn)
 
 	if err := acceptOrder(ctx, client); err != nil {
-		log.Fatalf("failed to accept order: %v", err)
+		log.Fatalf("failed to accept pwz: %v", err)
 	}
 }
 
@@ -68,7 +68,7 @@ func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.AcceptOrderRequest{
-		OrderId:   12345,
+		OrderId:   123456,
 		UserId:    456,
 		ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
 		Package:   ptr(desc.PackageType_PACKAGE_TYPE_UNSPECIFIED),

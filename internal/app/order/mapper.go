@@ -2,7 +2,7 @@ package order
 
 import (
 	"PWZ1.0/internal/models"
-	desc "PWZ1.0/pkg/order"
+	desc "PWZ1.0/pkg/pwz"
 )
 
 func toInternalPackage(pt desc.PackageType) models.PackageType {

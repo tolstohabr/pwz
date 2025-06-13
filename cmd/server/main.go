@@ -7,7 +7,7 @@ import (
 	"PWZ1.0/internal/app/order"
 	"PWZ1.0/internal/service"
 	"PWZ1.0/internal/storage"
-	desc "PWZ1.0/pkg/order"
+	desc "PWZ1.0/pkg/pwz"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

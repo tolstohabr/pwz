@@ -14,7 +14,7 @@ bin-deps:
 
 generate:
 	cmd /C if not exist "$(OUT_PATH)" mkdir "$(OUT_PATH)"
-	$(PROTOC) --proto_path=api --go_out=$(OUT_PATH) --go_opt=paths=source_relative --plugin protoc-gen-go="bin\protoc-gen-go.exe" --go-grpc_out=$(OUT_PATH) --go-grpc_opt=paths=source_relative --plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" api/order/order.proto
+	$(PROTOC) --proto_path=api --go_out=$(OUT_PATH) --go_opt=paths=source_relative --plugin protoc-gen-go="bin\protoc-gen-go.exe" --go-grpc_out=$(OUT_PATH) --go-grpc_opt=paths=source_relative --plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" api/pwz/pwz.proto
 	go mod tidy
 
 

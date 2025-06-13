@@ -3,7 +3,7 @@ package order
 import (
 	"context"
 
-	desc "PWZ1.0/pkg/order"
+	desc "PWZ1.0/pkg/pwz"
 )
 
 func (i *Implementation) AcceptOrder(ctx context.Context, req *desc.AcceptOrderRequest) (*desc.OrderResponse, error) {
