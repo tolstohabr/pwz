@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -51,8 +52,17 @@ func sendMessage(ctx context.Context, client desc.NotifierClient) error {
 	//тут задаем поверх контекста метаданные
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
+	comment := "this is the comment from gekon"
 	req := &desc.MessageRequest{
-		Text: "FIRST MESSAGE from client",
+		Text:     "low priority",
+		Priority: desc.Priority_PRIORITY_LOW,
+		Delay:    &durationpb.Duration{Seconds: 2},
+		Tags:     []string{"skull", "butterfly", "innocent"},
+		Comment:  &comment,
+		Title:    "gekonito bombito",
+	}
+	if err := req.ValidateAll(); err != nil {
+		return err
 	}
 
 	res, err := client.SendMessage(ctx, req)
