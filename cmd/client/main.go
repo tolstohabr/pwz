@@ -46,6 +46,11 @@ func main() {
 	if err := acceptOrder(ctx, client); err != nil {
 		log.Fatalf("failed to accept pwz: %v", err)
 	}
+
+	if err := listOrders(ctx, client); err != nil {
+		log.Fatalf("failed to list orders: %v", err)
+	}
+
 }
 
 func sendMessage(ctx context.Context, client desc.NotifierClient) error {
@@ -71,11 +76,12 @@ func sendMessage(ctx context.Context, client desc.NotifierClient) error {
 	return nil
 }
 
+// TODO: accept order
 func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.AcceptOrderRequest{
-		OrderId:   123456,
+		OrderId:   -1,
 		UserId:    456,
 		ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
 		Package:   ptr(desc.PackageType_PACKAGE_TYPE_UNSPECIFIED),
@@ -94,4 +100,41 @@ func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+// TODO: list orders
+func listOrders(ctx context.Context, client desc.NotifierClient) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	log.Println("Calling ListOrders...")
+
+	req := &desc.ListOrdersRequest{
+		UserId: 456,
+		InPvz:  true, // или false, если хочешь все заказы
+		LastN:  nil,  // можно оставить пустым
+		Pagination: &desc.Pagination{
+			Page:        0,
+			CountOnPage: 10,
+		},
+	}
+
+	res, err := client.ListOrders(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Total orders: %d", res.GetTotal())
+	for _, order := range res.GetOrders() {
+		log.Printf("OrderID: %d, UserID: %d, Status: %s, Expires: %s, Price: %.2f, Weight: %.2f, Package: %v",
+			order.GetOrderId(),
+			order.GetUserId(),
+			order.GetStatus().String(),
+			order.GetExpiresAt().AsTime().Format(time.RFC3339),
+			order.GetTotalPrice(),
+			order.GetWeight(),
+			order.GetPackage().String(),
+		)
+	}
+
+	return nil
 }

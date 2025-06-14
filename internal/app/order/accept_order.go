@@ -14,10 +14,10 @@ func (i *Implementation) AcceptOrder(ctx context.Context, req *desc.AcceptOrderR
 		ctx,
 		req.GetOrderId(),
 		req.GetUserId(),
-		float64(req.GetWeight()),
-		float64(req.GetPrice()),
+		req.GetWeight(),
+		req.GetPrice(),
 		expiresAt,
-		toInternalPackage(req.GetPackage()), // преобразуем proto enum -> internal
+		toInternalPackage(req.GetPackage()),
 	)
 
 	if err != nil {

@@ -22,7 +22,7 @@ const (
 )
 
 type OrderService interface {
-	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float64, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
+	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
 	ReturnOrder(orderID uint64) error
 	ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string
 	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit int) []models.Order
@@ -44,7 +44,7 @@ func (s *orderService) SaveOrder(order models.Order) error {
 }
 
 // AcceptOrder добавить заказ в ПВЗ
-func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float64, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
+func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,

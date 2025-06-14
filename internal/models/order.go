@@ -29,8 +29,8 @@ type Order struct {
 	ExpiresAt   time.Time   `json:"expires_at"` //время до которого заказ можно выдать
 	Status      OrderStatus `json:"status"`
 	PackageType PackageType `json:"package_type"`
-	Weight      float64     `json:"weight"`
-	Price       float64     `json:"price"`
+	Weight      float32     `json:"weight"`
+	Price       float32     `json:"price"`
 }
 
 // расчёт всей стоимости
