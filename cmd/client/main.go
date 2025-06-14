@@ -61,9 +61,6 @@ func sendMessage(ctx context.Context, client desc.NotifierClient) error {
 		Comment:  &comment,
 		Title:    "gekonito bombito",
 	}
-	if err := req.ValidateAll(); err != nil {
-		return err
-	}
 
 	res, err := client.SendMessage(ctx, req)
 	if err != nil {

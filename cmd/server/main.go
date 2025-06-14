@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"PWZ1.0/internal/app/order"
+	"PWZ1.0/internal/mw"
 	"PWZ1.0/internal/service"
 	"PWZ1.0/internal/storage"
 	desc "PWZ1.0/pkg/pwz"
@@ -22,7 +23,7 @@ func main() {
 	orderService := service.NewOrderService(storage)
 	orderServer := order.NewHandler(orderService)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(mw.ValidateInterceptor))
 	reflection.Register(grpcServer)
 	desc.RegisterNotifierServer(grpcServer, orderServer)
 
