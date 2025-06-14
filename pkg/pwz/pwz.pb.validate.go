@@ -57,9 +57,27 @@ func (m *MessageRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Text
+	if l := utf8.RuneCountInString(m.GetText()); l < 1 || l > 200 {
+		err := MessageRequestValidationError{
+			field:  "Text",
+			reason: "value length must be between 1 and 200 runes, inclusive",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for Priority
+	if _, ok := Priority_name[int32(m.GetPriority())]; !ok {
+		err := MessageRequestValidationError{
+			field:  "Priority",
+			reason: "value must be one of the defined enum values",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if all {
 		switch v := interface{}(m.GetDelay()).(type) {
@@ -88,6 +106,28 @@ func (m *MessageRequest) validate(all bool) error {
 				cause:  err,
 			}
 		}
+	}
+
+	if len(m.GetTags()) > 10 {
+		err := MessageRequestValidationError{
+			field:  "Tags",
+			reason: "value must contain no more than 10 item(s)",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if utf8.RuneCountInString(m.GetTitle()) > 50 {
+		err := MessageRequestValidationError{
+			field:  "Title",
+			reason: "value length must be at most 50 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if m.Comment != nil {

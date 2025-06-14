@@ -9,11 +9,12 @@ import "validate/validate.proto";
 option go_package = "PWZ1.0/pkg/pwz";
 
 message MessageRequest {
-  string text = 1;
-  Priority priority = 2;
+  string text = 1 [(validate.rules).string = {min_len: 1, max_len: 200}];
+  Priority priority = 2 [(validate.rules).enum = {defined_only: true}];
   google.protobuf.Duration delay = 3;
-  repeated string tags = 4;
+  repeated string tags = 4 [(validate.rules).repeated = {max_items: 10}];
   optional string comment = 5;
+  string title = 6 [(validate.rules).string = {max_len: 50}];
 }
 
 message MessageResponse {

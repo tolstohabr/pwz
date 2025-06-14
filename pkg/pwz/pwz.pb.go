@@ -265,6 +265,7 @@ type MessageRequest struct {
 	Delay         *durationpb.Duration   `protobuf:"bytes,3,opt,name=delay,proto3" json:"delay,omitempty"`
 	Tags          []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
 	Comment       *string                `protobuf:"bytes,5,opt,name=comment,proto3,oneof" json:"comment,omitempty"`
+	Title         string                 `protobuf:"bytes,6,opt,name=title,proto3" json:"title,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -330,6 +331,13 @@ func (x *MessageRequest) GetTags() []string {
 func (x *MessageRequest) GetComment() string {
 	if x != nil && x.Comment != nil {
 		return *x.Comment
+	}
+	return ""
+}
+
+func (x *MessageRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
 	}
 	return ""
 }
@@ -1270,13 +1278,16 @@ var File_pwz_pwz_proto protoreflect.FileDescriptor
 
 const file_pwz_pwz_proto_rawDesc = "" +
 	"\n" +
-	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\xc4\x01\n" +
-	"\x0eMessageRequest\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\x12.\n" +
-	"\bpriority\x18\x02 \x01(\x0e2\x12.notifier.PriorityR\bpriority\x12/\n" +
-	"\x05delay\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x05delay\x12\x12\n" +
-	"\x04tags\x18\x04 \x03(\tR\x04tags\x12\x1d\n" +
-	"\acomment\x18\x05 \x01(\tH\x00R\acomment\x88\x01\x01B\n" +
+	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\x83\x02\n" +
+	"\x0eMessageRequest\x12\x1e\n" +
+	"\x04text\x18\x01 \x01(\tB\n" +
+	"\xfaB\ar\x05\x10\x01\x18\xc8\x01R\x04text\x128\n" +
+	"\bpriority\x18\x02 \x01(\x0e2\x12.notifier.PriorityB\b\xfaB\x05\x82\x01\x02\x10\x01R\bpriority\x12/\n" +
+	"\x05delay\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x05delay\x12\x1c\n" +
+	"\x04tags\x18\x04 \x03(\tB\b\xfaB\x05\x92\x01\x02\x10\n" +
+	"R\x04tags\x12\x1d\n" +
+	"\acomment\x18\x05 \x01(\tH\x00R\acomment\x88\x01\x01\x12\x1d\n" +
+	"\x05title\x18\x06 \x01(\tB\a\xfaB\x04r\x02\x182R\x05titleB\n" +
 	"\n" +
 	"\b_comment\"!\n" +
 	"\x0fMessageResponse\x12\x0e\n" +
