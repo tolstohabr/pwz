@@ -17,6 +17,19 @@ generate:
 	$(PROTOC) --proto_path=api --go_out=$(OUT_PATH) --go_opt=paths=source_relative --plugin protoc-gen-go="bin\protoc-gen-go.exe" --go-grpc_out=$(OUT_PATH) --go-grpc_opt=paths=source_relative --plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" api/pwz/pwz.proto
 	go mod tidy
 
+vendor-proto/validate:
+	@powershell -NoProfile -Command \
+	"$$ErrorActionPreference = 'Stop'; \
+	if (Test-Path 'vendor.protogen/tmp') { Remove-Item -Recurse -Force 'vendor.protogen/tmp' }; \
+	if (Test-Path 'vendor.protogen/validate') { Remove-Item -Recurse -Force 'vendor.protogen/validate' }; \
+	git clone -b main --single-branch --depth=2 --filter=tree:0 https://github.com/bufbuild/protoc-gen-validate vendor.protogen/tmp; \
+	cd vendor.protogen/tmp; \
+	git sparse-checkout set --no-cone validate; \
+	git checkout; \
+	mkdir -Force '..\validate' | Out-Null; \
+	Move-Item -Path 'validate' -Destination '..\validate' -Force; \
+	cd ..; \
+	Remove-Item -Recurse -Force 'tmp'"
 
 run:
 	go run ./cmd/main.go

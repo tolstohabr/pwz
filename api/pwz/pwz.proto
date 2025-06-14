@@ -3,16 +3,32 @@ syntax = "proto3";
 package notifier;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
 
 option go_package = "PWZ1.0/pkg/pwz";
 
 message MessageRequest {
   string text = 1;
+  Priority priority = 2;
+  google.protobuf.Duration delay = 3;
+  repeated string tags = 4;
+  optional string comment = 5;
 }
 
 message MessageResponse {
   uint32 id = 1;
 }
+
+enum Priority {
+  PRIORITY_UNKNOWN = 0;
+  PRIORITY_MIN = 1;
+  PRIORITY_LOW = 2;
+  PRIORITY_DEFAULT = 3;
+  PRIORITY_HIGH = 4;
+  PRIORITY_MAX = 5;
+}
+
 
 service Notifier {
   //было для тестов
