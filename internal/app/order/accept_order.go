@@ -7,7 +7,6 @@ import (
 )
 
 func (i *Implementation) AcceptOrder(ctx context.Context, req *desc.AcceptOrderRequest) (*desc.OrderResponse, error) {
-	// конвертация Timestamp в time.Time
 	expiresAt := req.GetExpiresAt().AsTime()
 
 	order, err := i.orderService.AcceptOrder(
