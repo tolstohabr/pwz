@@ -96,7 +96,7 @@ func printHelp() {
 func handleAcceptOrder(ctx context.Context, orderService service.OrderService, args []string) {
 	var orderIDStr, userIDStr, expiresStr string
 	var orderID, userID uint64
-	var weight, price float64
+	var weight, price float32
 	var packageType models.PackageType
 
 	for i := 0; i < len(args); i++ {
@@ -118,22 +118,22 @@ func handleAcceptOrder(ctx context.Context, orderService service.OrderService, a
 			}
 		case "--weight":
 			if i+1 < len(args) {
-				var err error
-				weight, err = strconv.ParseFloat(args[i+1], 64)
-				if err != nil || weight <= 0 {
+				weight64, err := strconv.ParseFloat(args[i+1], 64)
+				if err != nil || weight64 <= 0 {
 					logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "некорректный вес")
 					return
 				}
+				weight = float32(weight64)
 				i++
 			}
 		case "--price":
 			if i+1 < len(args) {
-				var err error
-				price, err = strconv.ParseFloat(args[i+1], 64)
-				if err != nil || price <= 0 {
+				price64, err := strconv.ParseFloat(args[i+1], 64)
+				if err != nil || price64 <= 0 {
 					logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "некорректная цена")
 					return
 				}
+				price = float32(price64)
 				i++
 			}
 		case "--package":
