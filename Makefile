@@ -11,10 +11,21 @@ bin-deps:
 	del $(PROTOC_FILE)
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	go install github.com/envoyproxy/protoc-gen-validate@latest
 
 generate:
 	cmd /C if not exist "$(OUT_PATH)" mkdir "$(OUT_PATH)"
-	$(PROTOC) --proto_path=api --go_out=$(OUT_PATH) --go_opt=paths=source_relative --plugin protoc-gen-go="bin\protoc-gen-go.exe" --go-grpc_out=$(OUT_PATH) --go-grpc_opt=paths=source_relative --plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" api/pwz/pwz.proto
+	$(PROTOC) --proto_path=api \
+		--proto_path=vendor.protogen \
+		--go_out=$(OUT_PATH) \
+		--go_opt=paths=source_relative \
+		--plugin protoc-gen-go="bin\protoc-gen-go.exe" \
+		--go-grpc_out=$(OUT_PATH) \
+		--go-grpc_opt=paths=source_relative \
+		--plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" \
+		--validate_out="lang=go,paths=source_relative:$(OUT_PATH)" \
+		--plugin protoc-gen-validate="bin\protoc-gen-validate.exe" \
+		api/pwz/pwz.proto
 	go mod tidy
 
 vendor-proto/validate:

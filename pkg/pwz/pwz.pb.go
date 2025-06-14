@@ -7,8 +7,10 @@
 package pwz
 
 import (
+	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -21,6 +23,64 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+type Priority int32
+
+const (
+	Priority_PRIORITY_UNKNOWN Priority = 0
+	Priority_PRIORITY_MIN     Priority = 1
+	Priority_PRIORITY_LOW     Priority = 2
+	Priority_PRIORITY_DEFAULT Priority = 3
+	Priority_PRIORITY_HIGH    Priority = 4
+	Priority_PRIORITY_MAX     Priority = 5
+)
+
+// Enum value maps for Priority.
+var (
+	Priority_name = map[int32]string{
+		0: "PRIORITY_UNKNOWN",
+		1: "PRIORITY_MIN",
+		2: "PRIORITY_LOW",
+		3: "PRIORITY_DEFAULT",
+		4: "PRIORITY_HIGH",
+		5: "PRIORITY_MAX",
+	}
+	Priority_value = map[string]int32{
+		"PRIORITY_UNKNOWN": 0,
+		"PRIORITY_MIN":     1,
+		"PRIORITY_LOW":     2,
+		"PRIORITY_DEFAULT": 3,
+		"PRIORITY_HIGH":    4,
+		"PRIORITY_MAX":     5,
+	}
+)
+
+func (x Priority) Enum() *Priority {
+	p := new(Priority)
+	*p = x
+	return p
+}
+
+func (x Priority) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Priority) Descriptor() protoreflect.EnumDescriptor {
+	return file_pwz_pwz_proto_enumTypes[0].Descriptor()
+}
+
+func (Priority) Type() protoreflect.EnumType {
+	return &file_pwz_pwz_proto_enumTypes[0]
+}
+
+func (x Priority) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Priority.Descriptor instead.
+func (Priority) EnumDescriptor() ([]byte, []int) {
+	return file_pwz_pwz_proto_rawDescGZIP(), []int{0}
+}
 
 type ActionType int32
 
@@ -58,11 +118,11 @@ func (x ActionType) String() string {
 }
 
 func (ActionType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pwz_pwz_proto_enumTypes[0].Descriptor()
+	return file_pwz_pwz_proto_enumTypes[1].Descriptor()
 }
 
 func (ActionType) Type() protoreflect.EnumType {
-	return &file_pwz_pwz_proto_enumTypes[0]
+	return &file_pwz_pwz_proto_enumTypes[1]
 }
 
 func (x ActionType) Number() protoreflect.EnumNumber {
@@ -71,7 +131,7 @@ func (x ActionType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ActionType.Descriptor instead.
 func (ActionType) EnumDescriptor() ([]byte, []int) {
-	return file_pwz_pwz_proto_rawDescGZIP(), []int{0}
+	return file_pwz_pwz_proto_rawDescGZIP(), []int{1}
 }
 
 type PackageType int32
@@ -122,11 +182,11 @@ func (x PackageType) String() string {
 }
 
 func (PackageType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pwz_pwz_proto_enumTypes[1].Descriptor()
+	return file_pwz_pwz_proto_enumTypes[2].Descriptor()
 }
 
 func (PackageType) Type() protoreflect.EnumType {
-	return &file_pwz_pwz_proto_enumTypes[1]
+	return &file_pwz_pwz_proto_enumTypes[2]
 }
 
 func (x PackageType) Number() protoreflect.EnumNumber {
@@ -135,7 +195,7 @@ func (x PackageType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PackageType.Descriptor instead.
 func (PackageType) EnumDescriptor() ([]byte, []int) {
-	return file_pwz_pwz_proto_rawDescGZIP(), []int{1}
+	return file_pwz_pwz_proto_rawDescGZIP(), []int{2}
 }
 
 type OrderStatus int32
@@ -182,11 +242,11 @@ func (x OrderStatus) String() string {
 }
 
 func (OrderStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pwz_pwz_proto_enumTypes[2].Descriptor()
+	return file_pwz_pwz_proto_enumTypes[3].Descriptor()
 }
 
 func (OrderStatus) Type() protoreflect.EnumType {
-	return &file_pwz_pwz_proto_enumTypes[2]
+	return &file_pwz_pwz_proto_enumTypes[3]
 }
 
 func (x OrderStatus) Number() protoreflect.EnumNumber {
@@ -195,12 +255,16 @@ func (x OrderStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OrderStatus.Descriptor instead.
 func (OrderStatus) EnumDescriptor() ([]byte, []int) {
-	return file_pwz_pwz_proto_rawDescGZIP(), []int{2}
+	return file_pwz_pwz_proto_rawDescGZIP(), []int{3}
 }
 
 type MessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Priority      Priority               `protobuf:"varint,2,opt,name=priority,proto3,enum=notifier.Priority" json:"priority,omitempty"`
+	Delay         *durationpb.Duration   `protobuf:"bytes,3,opt,name=delay,proto3" json:"delay,omitempty"`
+	Tags          []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
+	Comment       *string                `protobuf:"bytes,5,opt,name=comment,proto3,oneof" json:"comment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -238,6 +302,34 @@ func (*MessageRequest) Descriptor() ([]byte, []int) {
 func (x *MessageRequest) GetText() string {
 	if x != nil {
 		return x.Text
+	}
+	return ""
+}
+
+func (x *MessageRequest) GetPriority() Priority {
+	if x != nil {
+		return x.Priority
+	}
+	return Priority_PRIORITY_UNKNOWN
+}
+
+func (x *MessageRequest) GetDelay() *durationpb.Duration {
+	if x != nil {
+		return x.Delay
+	}
+	return nil
+}
+
+func (x *MessageRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *MessageRequest) GetComment() string {
+	if x != nil && x.Comment != nil {
+		return *x.Comment
 	}
 	return ""
 }
@@ -1178,9 +1270,15 @@ var File_pwz_pwz_proto protoreflect.FileDescriptor
 
 const file_pwz_pwz_proto_rawDesc = "" +
 	"\n" +
-	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\"$\n" +
+	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\xc4\x01\n" +
 	"\x0eMessageRequest\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"!\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12.\n" +
+	"\bpriority\x18\x02 \x01(\x0e2\x12.notifier.PriorityR\bpriority\x12/\n" +
+	"\x05delay\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x05delay\x12\x12\n" +
+	"\x04tags\x18\x04 \x03(\tR\x04tags\x12\x1d\n" +
+	"\acomment\x18\x05 \x01(\tH\x00R\acomment\x88\x01\x01B\n" +
+	"\n" +
+	"\b_comment\"!\n" +
 	"\x0fMessageResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\"\xf3\x01\n" +
 	"\x12AcceptOrderRequest\x12\x19\n" +
@@ -1255,7 +1353,14 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12-\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x15.notifier.OrderStatusR\x06status\x129\n" +
 	"\n" +
-	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt*X\n" +
+	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt*\x7f\n" +
+	"\bPriority\x12\x14\n" +
+	"\x10PRIORITY_UNKNOWN\x10\x00\x12\x10\n" +
+	"\fPRIORITY_MIN\x10\x01\x12\x10\n" +
+	"\fPRIORITY_LOW\x10\x02\x12\x14\n" +
+	"\x10PRIORITY_DEFAULT\x10\x03\x12\x11\n" +
+	"\rPRIORITY_HIGH\x10\x04\x12\x10\n" +
+	"\fPRIORITY_MAX\x10\x05*X\n" +
 	"\n" +
 	"ActionType\x12\x1b\n" +
 	"\x17ACTION_TYPE_UNSPECIFIED\x10\x00\x12\x15\n" +
@@ -1298,70 +1403,74 @@ func file_pwz_pwz_proto_rawDescGZIP() []byte {
 	return file_pwz_pwz_proto_rawDescData
 }
 
-var file_pwz_pwz_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_pwz_pwz_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_pwz_pwz_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_pwz_pwz_proto_goTypes = []any{
-	(ActionType)(0),               // 0: notifier.ActionType
-	(PackageType)(0),              // 1: notifier.PackageType
-	(OrderStatus)(0),              // 2: notifier.OrderStatus
-	(*MessageRequest)(nil),        // 3: notifier.MessageRequest
-	(*MessageResponse)(nil),       // 4: notifier.MessageResponse
-	(*AcceptOrderRequest)(nil),    // 5: notifier.AcceptOrderRequest
-	(*OrderIdRequest)(nil),        // 6: notifier.OrderIdRequest
-	(*ProcessOrdersRequest)(nil),  // 7: notifier.ProcessOrdersRequest
-	(*ListOrdersRequest)(nil),     // 8: notifier.ListOrdersRequest
-	(*Pagination)(nil),            // 9: notifier.Pagination
-	(*ListReturnsRequest)(nil),    // 10: notifier.ListReturnsRequest
-	(*ImportOrdersRequest)(nil),   // 11: notifier.ImportOrdersRequest
-	(*GetHistoryRequest)(nil),     // 12: notifier.GetHistoryRequest
-	(*OrderResponse)(nil),         // 13: notifier.OrderResponse
-	(*ProcessResult)(nil),         // 14: notifier.ProcessResult
-	(*OrdersList)(nil),            // 15: notifier.OrdersList
-	(*ReturnsList)(nil),           // 16: notifier.ReturnsList
-	(*OrderHistoryList)(nil),      // 17: notifier.OrderHistoryList
-	(*ImportResult)(nil),          // 18: notifier.ImportResult
-	(*Order)(nil),                 // 19: notifier.Order
-	(*OrderHistory)(nil),          // 20: notifier.OrderHistory
-	(*timestamppb.Timestamp)(nil), // 21: google.protobuf.Timestamp
+	(Priority)(0),                 // 0: notifier.Priority
+	(ActionType)(0),               // 1: notifier.ActionType
+	(PackageType)(0),              // 2: notifier.PackageType
+	(OrderStatus)(0),              // 3: notifier.OrderStatus
+	(*MessageRequest)(nil),        // 4: notifier.MessageRequest
+	(*MessageResponse)(nil),       // 5: notifier.MessageResponse
+	(*AcceptOrderRequest)(nil),    // 6: notifier.AcceptOrderRequest
+	(*OrderIdRequest)(nil),        // 7: notifier.OrderIdRequest
+	(*ProcessOrdersRequest)(nil),  // 8: notifier.ProcessOrdersRequest
+	(*ListOrdersRequest)(nil),     // 9: notifier.ListOrdersRequest
+	(*Pagination)(nil),            // 10: notifier.Pagination
+	(*ListReturnsRequest)(nil),    // 11: notifier.ListReturnsRequest
+	(*ImportOrdersRequest)(nil),   // 12: notifier.ImportOrdersRequest
+	(*GetHistoryRequest)(nil),     // 13: notifier.GetHistoryRequest
+	(*OrderResponse)(nil),         // 14: notifier.OrderResponse
+	(*ProcessResult)(nil),         // 15: notifier.ProcessResult
+	(*OrdersList)(nil),            // 16: notifier.OrdersList
+	(*ReturnsList)(nil),           // 17: notifier.ReturnsList
+	(*OrderHistoryList)(nil),      // 18: notifier.OrderHistoryList
+	(*ImportResult)(nil),          // 19: notifier.ImportResult
+	(*Order)(nil),                 // 20: notifier.Order
+	(*OrderHistory)(nil),          // 21: notifier.OrderHistory
+	(*durationpb.Duration)(nil),   // 22: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
 }
 var file_pwz_pwz_proto_depIdxs = []int32{
-	21, // 0: notifier.AcceptOrderRequest.expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 1: notifier.AcceptOrderRequest.package:type_name -> notifier.PackageType
-	0,  // 2: notifier.ProcessOrdersRequest.action:type_name -> notifier.ActionType
-	9,  // 3: notifier.ListOrdersRequest.pagination:type_name -> notifier.Pagination
-	9,  // 4: notifier.ListReturnsRequest.pagination:type_name -> notifier.Pagination
-	5,  // 5: notifier.ImportOrdersRequest.orders:type_name -> notifier.AcceptOrderRequest
-	9,  // 6: notifier.GetHistoryRequest.pagination:type_name -> notifier.Pagination
-	2,  // 7: notifier.OrderResponse.status:type_name -> notifier.OrderStatus
-	19, // 8: notifier.OrdersList.orders:type_name -> notifier.Order
-	19, // 9: notifier.ReturnsList.returns:type_name -> notifier.Order
-	20, // 10: notifier.OrderHistoryList.history:type_name -> notifier.OrderHistory
-	2,  // 11: notifier.Order.status:type_name -> notifier.OrderStatus
-	21, // 12: notifier.Order.expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 13: notifier.Order.package:type_name -> notifier.PackageType
-	2,  // 14: notifier.OrderHistory.status:type_name -> notifier.OrderStatus
-	21, // 15: notifier.OrderHistory.created_at:type_name -> google.protobuf.Timestamp
-	3,  // 16: notifier.Notifier.SendMessage:input_type -> notifier.MessageRequest
-	5,  // 17: notifier.Notifier.AcceptOrder:input_type -> notifier.AcceptOrderRequest
-	6,  // 18: notifier.Notifier.ReturnOrder:input_type -> notifier.OrderIdRequest
-	7,  // 19: notifier.Notifier.ProcessOrders:input_type -> notifier.ProcessOrdersRequest
-	8,  // 20: notifier.Notifier.ListOrders:input_type -> notifier.ListOrdersRequest
-	10, // 21: notifier.Notifier.ListReturns:input_type -> notifier.ListReturnsRequest
-	12, // 22: notifier.Notifier.GetHistory:input_type -> notifier.GetHistoryRequest
-	11, // 23: notifier.Notifier.ImportOrders:input_type -> notifier.ImportOrdersRequest
-	4,  // 24: notifier.Notifier.SendMessage:output_type -> notifier.MessageResponse
-	13, // 25: notifier.Notifier.AcceptOrder:output_type -> notifier.OrderResponse
-	13, // 26: notifier.Notifier.ReturnOrder:output_type -> notifier.OrderResponse
-	14, // 27: notifier.Notifier.ProcessOrders:output_type -> notifier.ProcessResult
-	15, // 28: notifier.Notifier.ListOrders:output_type -> notifier.OrdersList
-	16, // 29: notifier.Notifier.ListReturns:output_type -> notifier.ReturnsList
-	17, // 30: notifier.Notifier.GetHistory:output_type -> notifier.OrderHistoryList
-	18, // 31: notifier.Notifier.ImportOrders:output_type -> notifier.ImportResult
-	24, // [24:32] is the sub-list for method output_type
-	16, // [16:24] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	0,  // 0: notifier.MessageRequest.priority:type_name -> notifier.Priority
+	22, // 1: notifier.MessageRequest.delay:type_name -> google.protobuf.Duration
+	23, // 2: notifier.AcceptOrderRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: notifier.AcceptOrderRequest.package:type_name -> notifier.PackageType
+	1,  // 4: notifier.ProcessOrdersRequest.action:type_name -> notifier.ActionType
+	10, // 5: notifier.ListOrdersRequest.pagination:type_name -> notifier.Pagination
+	10, // 6: notifier.ListReturnsRequest.pagination:type_name -> notifier.Pagination
+	6,  // 7: notifier.ImportOrdersRequest.orders:type_name -> notifier.AcceptOrderRequest
+	10, // 8: notifier.GetHistoryRequest.pagination:type_name -> notifier.Pagination
+	3,  // 9: notifier.OrderResponse.status:type_name -> notifier.OrderStatus
+	20, // 10: notifier.OrdersList.orders:type_name -> notifier.Order
+	20, // 11: notifier.ReturnsList.returns:type_name -> notifier.Order
+	21, // 12: notifier.OrderHistoryList.history:type_name -> notifier.OrderHistory
+	3,  // 13: notifier.Order.status:type_name -> notifier.OrderStatus
+	23, // 14: notifier.Order.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 15: notifier.Order.package:type_name -> notifier.PackageType
+	3,  // 16: notifier.OrderHistory.status:type_name -> notifier.OrderStatus
+	23, // 17: notifier.OrderHistory.created_at:type_name -> google.protobuf.Timestamp
+	4,  // 18: notifier.Notifier.SendMessage:input_type -> notifier.MessageRequest
+	6,  // 19: notifier.Notifier.AcceptOrder:input_type -> notifier.AcceptOrderRequest
+	7,  // 20: notifier.Notifier.ReturnOrder:input_type -> notifier.OrderIdRequest
+	8,  // 21: notifier.Notifier.ProcessOrders:input_type -> notifier.ProcessOrdersRequest
+	9,  // 22: notifier.Notifier.ListOrders:input_type -> notifier.ListOrdersRequest
+	11, // 23: notifier.Notifier.ListReturns:input_type -> notifier.ListReturnsRequest
+	13, // 24: notifier.Notifier.GetHistory:input_type -> notifier.GetHistoryRequest
+	12, // 25: notifier.Notifier.ImportOrders:input_type -> notifier.ImportOrdersRequest
+	5,  // 26: notifier.Notifier.SendMessage:output_type -> notifier.MessageResponse
+	14, // 27: notifier.Notifier.AcceptOrder:output_type -> notifier.OrderResponse
+	14, // 28: notifier.Notifier.ReturnOrder:output_type -> notifier.OrderResponse
+	15, // 29: notifier.Notifier.ProcessOrders:output_type -> notifier.ProcessResult
+	16, // 30: notifier.Notifier.ListOrders:output_type -> notifier.OrdersList
+	17, // 31: notifier.Notifier.ListReturns:output_type -> notifier.ReturnsList
+	18, // 32: notifier.Notifier.GetHistory:output_type -> notifier.OrderHistoryList
+	19, // 33: notifier.Notifier.ImportOrders:output_type -> notifier.ImportResult
+	26, // [26:34] is the sub-list for method output_type
+	18, // [18:26] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_pwz_pwz_proto_init() }
@@ -1369,6 +1478,7 @@ func file_pwz_pwz_proto_init() {
 	if File_pwz_pwz_proto != nil {
 		return
 	}
+	file_pwz_pwz_proto_msgTypes[0].OneofWrappers = []any{}
 	file_pwz_pwz_proto_msgTypes[2].OneofWrappers = []any{}
 	file_pwz_pwz_proto_msgTypes[5].OneofWrappers = []any{}
 	file_pwz_pwz_proto_msgTypes[16].OneofWrappers = []any{}
@@ -1377,7 +1487,7 @@ func file_pwz_pwz_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pwz_pwz_proto_rawDesc), len(file_pwz_pwz_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
