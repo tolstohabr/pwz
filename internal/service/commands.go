@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"sort"
 	"strconv"
@@ -23,16 +22,26 @@ const (
 
 type OrderService interface {
 	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
-	ReturnOrder(orderID uint64) error
-	ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string
+	ReturnOrder(orderID uint64) (*OrderResponse, error)
+	ProcessOrders(ctx context.Context, userID uint64, action models.ActionType, orderIDs []uint64) ProcessResult
 	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit uint32) ([]models.Order, uint32)
 	ListReturns(page, limit int) []models.Order
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
 }
 
+type ProcessResult struct {
+	Processed []uint64
+	Errors    []uint64
+}
+
 type orderService struct {
 	storage storage.Storage
+}
+
+type OrderResponse struct {
+	OrderID uint64
+	Status  models.OrderStatus
 }
 
 func NewOrderService(storage storage.Storage) OrderService {
@@ -95,72 +104,83 @@ func IsValidPackage(pkg models.PackageType) bool {
 }
 
 // ReturnOrder удалить заказ
-func (s *orderService) ReturnOrder(orderID uint64) error {
+func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 	order, err := s.storage.GetOrder(orderID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	//если заказ у клиента
 	if order.Status == models.StatusAccepted {
-		return domainErrors.ErrOrderAlreadyIssued
+		return nil, domainErrors.ErrOrderAlreadyIssued
 	}
 
-	//если заказ в ПВЗ после возврата
 	if order.Status == models.StatusReturned {
-		return s.storage.DeleteOrder(orderID)
+		err := s.storage.DeleteOrder(orderID)
+		if err != nil {
+			return nil, err
+		}
+		return &OrderResponse{
+			OrderID: orderID,
+			Status:  models.StatusDeleted, // возвращён курьеру
+		}, nil
 	}
 
-	//если время хранения не истекло
 	if time.Now().Before(order.ExpiresAt) {
-		return domainErrors.ErrStorageNotExpired
+		return nil, domainErrors.ErrStorageNotExpired
 	}
 
-	return s.storage.DeleteOrder(orderID)
+	err = s.storage.DeleteOrder(orderID)
+	if err != nil {
+		return nil, err
+	}
+	return &OrderResponse{
+		OrderID: orderID,
+		Status:  models.StatusDeleted,
+	}, nil
 }
 
 // ProcessOrders обработать выдачу или возврат заказа
-func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string {
-	var results []string
+func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionType models.ActionType, orderIDs []uint64) ProcessResult {
+	result := ProcessResult{
+		Processed: make([]uint64, 0),
+		Errors:    make([]uint64, 0),
+	}
+
 	for _, id := range orderIDs {
 		order, err := s.storage.GetOrder(id)
-		if err != nil {
-			results = append(results, fmt.Sprintf("ERROR %d: ORDER_NOT_FOUND: заказ не найден", id))
+		if err != nil || order.UserID != userID {
+			result.Errors = append(result.Errors, id)
 			continue
 		}
 
-		if order.UserID != userID {
-			results = append(results, fmt.Sprintf("ERROR %d: USER_MISMATCH: несоответствие ID", id))
-			continue
-		}
-
-		if action == "issue" {
+		switch actionType {
+		case models.ActionTypeIssue:
 			if time.Now().After(order.ExpiresAt) {
-				results = append(results, fmt.Sprintf("ERROR %d: STORAGE_EXPIRED: срок хранения истёк", id))
+				result.Errors = append(result.Errors, id)
 				continue
 			}
 			order.Status = models.StatusAccepted
-			// тут обновлю ExpiresAt на текущее время + 48 часов вместо IssuedAt
 			order.ExpiresAt = time.Now().Add(ExpiredTime)
 			appendToHistory(ctx, order.ID, models.StatusAccepted)
-		} else if action == "return" {
-			// Проверяем, не истёк ли новый срок возврата (ExpiresAt)
+
+		case models.ActionTypeReturn:
 			if time.Now().After(order.ExpiresAt) {
-				results = append(results, fmt.Sprintf("ERROR %d: RETURN_TIME_EXPIRED: время на возврат истекло", id))
+				result.Errors = append(result.Errors, id)
 				continue
 			}
 			order.Status = models.StatusReturned
 			appendToHistory(ctx, order.ID, models.StatusReturned)
-		} else {
-			results = append(results, fmt.Sprintf("ERROR %d: INVALID_ACTION: непредусмотренное действие", id))
+
+		default:
+			result.Errors = append(result.Errors, id)
 			continue
 		}
 
 		_ = s.storage.UpdateOrder(order)
-
-		results = append(results, fmt.Sprintf("PROCESSED: %d", id))
+		result.Processed = append(result.Processed, id)
 	}
-	return results
+
+	return result
 }
 
 // ListOrders вывести список заказов

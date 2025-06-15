@@ -194,7 +194,7 @@ func handleReturnOrder(ctx context.Context, orderService service.OrderService, a
 	var orderIDStr string
 
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--pwz-id" && i+1 < len(args) {
+		if args[i] == "--order-id" && i+1 < len(args) {
 			orderIDStr = args[i+1]
 			i++
 		}
@@ -211,17 +211,17 @@ func handleReturnOrder(ctx context.Context, orderService service.OrderService, a
 		return
 	}
 
-	err = orderService.ReturnOrder(orderID)
+	resp, err := orderService.ReturnOrder(orderID)
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "заказ у клиента или время хранения еще не истекло")
-	} else {
-		fmt.Println("ORDER_RETURNED:", orderID)
+		return
 	}
+	fmt.Printf("ORDER_RETURNED: ID=%d STATUS=%s\n", resp.OrderID, resp.Status)
 }
 
 // handleProcessOrders Выдать или принять возврат
 func handleProcessOrders(ctx context.Context, orderService service.OrderService, args []string) {
-	var userIDStr, action, orderIDsStr string
+	var userIDStr, actionStr, orderIDsStr string
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -232,10 +232,10 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 			}
 		case "--action":
 			if i+1 < len(args) {
-				action = args[i+1]
+				actionStr = args[i+1]
 				i++
 			}
-		case "--pwz-ids":
+		case "--order-ids":
 			if i+1 < len(args) {
 				orderIDsStr = args[i+1]
 				i++
@@ -243,7 +243,7 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 		}
 	}
 
-	if userIDStr == "" || action == "" || orderIDsStr == "" {
+	if userIDStr == "" || actionStr == "" || orderIDsStr == "" {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "отсутствуют необходимые параметры")
 		return
 	}
@@ -256,7 +256,6 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 
 	orderIDsStrSlice := strings.Split(orderIDsStr, ",")
 	orderIDs := make([]uint64, 0, len(orderIDsStrSlice))
-
 	for _, idStr := range orderIDsStrSlice {
 		idStr = strings.TrimSpace(idStr)
 		if idStr == "" {
@@ -270,10 +269,19 @@ func handleProcessOrders(ctx context.Context, orderService service.OrderService,
 		orderIDs = append(orderIDs, id)
 	}
 
-	results := orderService.ProcessOrders(ctx, userID, action, orderIDs)
+	actionType := models.ParseActionType(actionStr)
+	if actionType == models.ActionTypeUnspecified {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "неизвестный тип действия")
+		return
+	}
 
-	for _, res := range results {
-		fmt.Println(res)
+	result := orderService.ProcessOrders(ctx, userID, actionType, orderIDs)
+
+	for _, id := range result.Processed {
+		fmt.Printf("PROCESSED: %d\n", id)
+	}
+	for _, id := range result.Errors {
+		fmt.Printf("ERROR: %d\n", id)
 	}
 }
 

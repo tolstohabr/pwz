@@ -8,6 +8,7 @@ import (
 
 type OrderStatus string
 type PackageType string
+type ActionType int
 
 const (
 	//статусы
@@ -28,7 +29,34 @@ const (
 	PackageBagTape     PackageType = "bag+tape"    // пакет и пленка
 	PackageBoxTape     PackageType = "box+tape"    // коробка и пленка
 	PackageUnspecified PackageType = "unspecified" // нету
+	//виды действий
+	ActionTypeUnspecified ActionType = iota
+	ActionTypeIssue
+	ActionTypeReturn
 )
+
+func (a ActionType) String() string {
+	switch a {
+	case ActionTypeIssue:
+		return "issue"
+	case ActionTypeReturn:
+		return "return"
+	default:
+		return "unspecified"
+	}
+}
+
+// ParseActionType парсит строку в ActionType
+func ParseActionType(s string) ActionType {
+	switch s {
+	case "issue":
+		return ActionTypeIssue
+	case "return":
+		return ActionTypeReturn
+	default:
+		return ActionTypeUnspecified
+	}
+}
 
 type Order struct {
 	ID          uint64      `json:"id"`

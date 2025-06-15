@@ -34,13 +34,28 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := acceptOrder(ctx, client, 103, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
+	/*if err := acceptOrder(ctx, client, 103, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
-	}
+	}*/
 
 	/*if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
 		log.Fatalf("failed to list orders: %v", err)
 	}*/
+
+	// Пример обработки заказов (выдача клиенту)
+	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_ISSUE, []uint64{103}); err != nil {
+		log.Fatalf("failed to process orders: %v", err)
+	}*/
+
+	// Пример обработки заказов (прием возврата от клиента)
+	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{103}); err != nil {
+		log.Fatalf("failed to process orders: %v", err)
+	}*/
+
+	// Пример возврата заказа курьеру
+	if err := returnOrder(ctx, client, 102); err != nil {
+		log.Fatalf("failed to return order: %v", err)
+	}
 }
 
 func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64, userID uint64, expiresAt time.Time, pkg *desc.PackageType, weight float32, price float32) error {
@@ -106,5 +121,51 @@ func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, 
 	}
 	fmt.Printf("Total orders: %d\n", resp.Total)
 
+	return nil
+}
+
+func processOrders(ctx context.Context, client desc.NotifierClient, userID uint64, action desc.ActionType, orderIDs []uint64) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	req := &desc.ProcessOrdersRequest{
+		UserId:   userID,
+		Action:   action,
+		OrderIds: orderIDs,
+	}
+
+	res, err := client.ProcessOrders(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	// Вывод результатов обработки
+	fmt.Println("Processed orders:")
+	for _, id := range res.Processed {
+		fmt.Printf("- %d\n", id)
+	}
+
+	if len(res.Errors) > 0 {
+		fmt.Println("Failed orders:")
+		for _, id := range res.Errors {
+			fmt.Printf("- %d\n", id)
+		}
+	}
+
+	return nil
+}
+
+func returnOrder(ctx context.Context, client desc.NotifierClient, orderID uint64) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	req := &desc.OrderIdRequest{
+		OrderId: orderID,
+	}
+
+	res, err := client.ReturnOrder(ctx, req)
+	if err != nil {
+		return fmt.Errorf("ReturnOrder failed: %w", err)
+	}
+
+	fmt.Printf("Order returned to courier: ID=%d, Status=%s\n", res.OrderId, res.Status.String())
 	return nil
 }
