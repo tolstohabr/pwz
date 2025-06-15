@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	grpcAddress = "localhost:50051"
+	grpcAddress    = "localhost:50051"
+	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	/*if err := acceptOrder(ctx, client, 102, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
+	/*if err := acceptOrder(ctx, client, 116, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
 	}*/
 
@@ -54,8 +55,12 @@ func main() {
 		log.Fatalf("failed to return order: %v", err)
 	}*/
 
-	if err := listReturns(ctx, client, 0, 10); err != nil {
+	/*if err := listReturns(ctx, client, 0, 10); err != nil {
 		log.Fatalf("failed to list returns: %v", err)
+	}*/
+
+	if err := getHistory(ctx, client, 0, 2); err != nil {
+		log.Fatalf("failed to get history: %v", err)
 	}
 }
 
@@ -203,5 +208,35 @@ func listReturns(ctx context.Context, client desc.NotifierClient, page uint32, l
 	}
 
 	fmt.Printf("PAGE: %d LIMIT: %d\n", page, limit)
+	return nil
+}
+
+func getHistory(ctx context.Context, client desc.NotifierClient, page uint32, limit uint32) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	req := &desc.GetHistoryRequest{
+		Pagination: &desc.Pagination{
+			Page:        page,
+			CountOnPage: limit,
+		},
+	}
+
+	resp, err := client.GetHistory(ctx, req)
+	if err != nil {
+		return fmt.Errorf("GetHistory failed: %w", err)
+	}
+
+	fmt.Printf("Page: %d, Items per page: %d\n", page, limit)
+
+	for _, record := range resp.History {
+		createdAt := record.CreatedAt.AsTime().Format(DateTimeFormat)
+		fmt.Printf("Order ID: %d Status: %s Created At: %s\n",
+			record.OrderId,
+			record.Status.String(),
+			createdAt)
+	}
+
+	fmt.Printf("Total records: %d\n", len(resp.History))
+
 	return nil
 }

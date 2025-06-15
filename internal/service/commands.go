@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
-	"strconv"
 	"time"
 
 	//"PWZ1.0/internal/models"
@@ -277,10 +276,14 @@ func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 
 // appendToHistory для добавления записи об изменении статуса в json-ку
 func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
-	record := map[string]string{
-		"order_id":  strconv.FormatUint(orderID, 10),
-		"status":    string(status),
-		"timestamp": time.Now().Format(DateTimeFormat),
+	record := struct {
+		OrderID   uint64 `json:"order_id"`
+		Status    string `json:"status"`
+		Timestamp string `json:"created_at"`
+	}{
+		OrderID:   orderID,
+		Status:    string(status),
+		Timestamp: time.Now().Format(time.RFC3339), // ISO-8601 формат, как в proto Timestamp
 	}
 
 	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -292,7 +295,7 @@ func appendToHistory(ctx context.Context, orderID uint64, status models.OrderSta
 
 	data, err := json.Marshal(record)
 	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка записи")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка маршала")
 		return
 	}
 

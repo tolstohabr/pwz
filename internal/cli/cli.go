@@ -411,14 +411,19 @@ func handleOrderHistory(ctx context.Context) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	fmt.Println("ORDER HISTORY LIST:")
 	for scanner.Scan() {
 		line := scanner.Text()
-		var record map[string]string
+		var record struct {
+			OrderID   uint64 `json:"order_id"`
+			Status    string `json:"status"`
+			Timestamp string `json:"created_at"`
+		}
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			fmt.Printf("ERROR: JSON_FAILED: %v\n", err)
 			continue
 		}
-		fmt.Printf("HISTORY: %s %s %s\n", record["order_id"], record["status"], record["timestamp"])
+		fmt.Printf("- OrderID: %d | Status: %s | CreatedAt: %s\n", record.OrderID, record.Status, record.Timestamp)
 	}
 
 	if err := scanner.Err(); err != nil {
