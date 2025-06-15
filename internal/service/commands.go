@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"os"
@@ -40,6 +41,7 @@ type OrderService interface {
 	ListReturns(req ListReturnsRequest) ReturnsList
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
+	GetHistory(req GetHistoryRequest) OrderHistoryList
 }
 
 type ProcessResult struct {
@@ -274,38 +276,6 @@ func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 	return ReturnsList{Returns: returned}
 }
 
-// appendToHistory для добавления записи об изменении статуса в json-ку
-func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
-	record := struct {
-		OrderID   uint64 `json:"order_id"`
-		Status    string `json:"status"`
-		Timestamp string `json:"created_at"`
-	}{
-		OrderID:   orderID,
-		Status:    string(status),
-		Timestamp: time.Now().Format(time.RFC3339), // ISO-8601 формат, как в proto Timestamp
-	}
-
-	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrOpenFiled, "ошибка открытия")
-		return
-	}
-	defer file.Close()
-
-	data, err := json.Marshal(record)
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка маршала")
-		return
-	}
-
-	_, err = file.Write(append(data, '\n'))
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка записи")
-		return
-	}
-}
-
 // ScrollOrders прокрутка
 func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]models.Order, uint64) {
 	allOrders, err := s.storage.ListOrders()
@@ -347,4 +317,104 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 	}
 
 	return result, nextLastID
+}
+
+// appendToHistory для добавления записи об изменении статуса в json-ку
+func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
+	record := struct {
+		OrderID   uint64 `json:"order_id"`
+		Status    string `json:"status"`
+		Timestamp string `json:"created_at"`
+	}{
+		OrderID:   orderID,
+		Status:    string(status),
+		Timestamp: time.Now().Format(time.RFC3339), // ISO-8601 формат, как в proto Timestamp
+	}
+
+	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrOpenFiled, "ошибка открытия")
+		return
+	}
+	defer file.Close()
+
+	data, err := json.Marshal(record)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка маршала")
+		return
+	}
+
+	_, err = file.Write(append(data, '\n'))
+	if err != nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка записи")
+		return
+	}
+}
+
+// GetHistoryRequest запрос на получение истории
+type GetHistoryRequest struct {
+	Pagination Pagination
+}
+
+// OrderHistoryList список записей истории
+type OrderHistoryList struct {
+	History []OrderHistory
+}
+
+// OrderHistory запись об изменении статуса заказа
+type OrderHistory struct {
+	OrderID   uint64
+	Status    models.OrderStatus
+	CreatedAt time.Time
+}
+
+// GetHistory получить историю изменений заказов
+func (s *orderService) GetHistory(req GetHistoryRequest) OrderHistoryList {
+	file, err := os.Open("order_history.json")
+	if err != nil {
+		return OrderHistoryList{}
+	}
+	defer file.Close()
+
+	var history []OrderHistory
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		var record struct {
+			OrderID   uint64 `json:"order_id"`
+			Status    string `json:"status"`
+			Timestamp string `json:"created_at"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			continue
+		}
+
+		createdAt, err := time.Parse(time.RFC3339, record.Timestamp)
+		if err != nil {
+			continue
+		}
+
+		history = append(history, OrderHistory{
+			OrderID:   record.OrderID,
+			Status:    models.OrderStatus(record.Status),
+			CreatedAt: createdAt,
+		})
+	}
+
+	page := int(req.Pagination.Page)
+	limit := int(req.Pagination.CountOnPage)
+
+	if limit > 0 {
+		start := page * limit
+		end := start + limit
+		if start >= len(history) {
+			return OrderHistoryList{History: []OrderHistory{}}
+		}
+		if end > len(history) {
+			end = len(history)
+		}
+		return OrderHistoryList{History: history[start:end]}
+	}
+
+	return OrderHistoryList{History: history}
 }

@@ -1,76 +1,33 @@
 package order
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
-	"os"
-	"time"
 
-	"PWZ1.0/pkg/pwz"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"PWZ1.0/internal/service"
+	desc "PWZ1.0/pkg/pwz"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (i *Implementation) GetHistory(ctx context.Context, req *pwz.GetHistoryRequest) (*pwz.OrderHistoryList, error) {
-	file, err := os.Open("order_history.json")
-	if err != nil {
-		return nil, err
+func (i *Implementation) GetHistory(ctx context.Context, req *desc.GetHistoryRequest) (*desc.OrderHistoryList, error) {
+	serviceReq := service.GetHistoryRequest{
+		Pagination: service.Pagination{
+			Page:        req.GetPagination().GetPage(),
+			CountOnPage: req.GetPagination().GetCountOnPage(),
+		},
 	}
-	defer file.Close()
 
-	var historyList []*pwz.OrderHistory
+	historyList := i.orderService.GetHistory(serviceReq)
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		var record struct {
-			OrderID   uint64 `json:"order_id"`
-			Status    string `json:"status"`
-			Timestamp string `json:"created_at"`
-		}
-
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			continue
-		}
-
-		createdAt, err := time.Parse(time.RFC3339, record.Timestamp)
-		if err != nil {
-			continue
-		}
-
-		ts := &timestamp.Timestamp{
-			Seconds: createdAt.Unix(),
-			Nanos:   int32(createdAt.Nanosecond()),
-		}
-
-		historyList = append(historyList, &pwz.OrderHistory{
-			OrderId:   record.OrderID,
-			Status:    pwz.OrderStatus(pwz.OrderStatus_value[record.Status]), // Конвертируем статус
-			CreatedAt: ts,
+	var pbHistoryList []*desc.OrderHistory
+	for _, h := range historyList.History {
+		pbHistoryList = append(pbHistoryList, &desc.OrderHistory{
+			OrderId:   h.OrderID,
+			Status:    desc.OrderStatus(desc.OrderStatus_value[string(h.Status)]),
+			CreatedAt: timestamppb.New(h.CreatedAt),
 		})
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	if req.GetPagination() != nil {
-		page := req.GetPagination().GetPage()
-		perPage := req.GetPagination().GetCountOnPage()
-		if perPage > 0 {
-			start := (page - 1) * perPage
-			end := start + perPage
-			if start >= uint32(len(historyList)) {
-				historyList = []*pwz.OrderHistory{}
-			} else if end > uint32(len(historyList)) {
-				historyList = historyList[start:]
-			} else {
-				historyList = historyList[start:end]
-			}
-		}
-	}
-
-	return &pwz.OrderHistoryList{
-		History: historyList,
+	return &desc.OrderHistoryList{
+		History: pbHistoryList,
 	}, nil
 }

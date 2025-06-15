@@ -67,7 +67,9 @@ func (c *CLI) Run() {
 		case "list-returns":
 			handleListReturns(c.orderService, args[1:])
 		case "order-history":
-			handleOrderHistory(ctx)
+			//handleOrderHistory(ctx)
+			handleOrderHistory(c.orderService, args[1:])
+
 		case "import-orders":
 			handleImportOrders(ctx, c.orderService, args[1:])
 		case "scroll-orders":
@@ -402,33 +404,61 @@ func handleListReturns(orderService service.OrderService, args []string) {
 }
 
 // handleOrderHistory Получить историю заказов
-func handleOrderHistory(ctx context.Context) {
-	file, err := os.Open("order_history.json")
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrOpenFiled, "не открывается файл")
+func handleOrderHistory(orderService service.OrderService, args []string) {
+	ctx := context.Background()
+	var page, limit uint32
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--page":
+			if i+1 < len(args) {
+				n, err := strconv.ParseUint(args[i+1], 10, 32)
+				if err == nil {
+					page = uint32(n)
+				}
+				i++
+			}
+		case "--limit":
+			if i+1 < len(args) {
+				n, err := strconv.ParseUint(args[i+1], 10, 32)
+				if err == nil {
+					limit = uint32(n)
+				}
+				i++
+			}
+		default:
+			logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed,
+				fmt.Sprintf("неизвестный флаг: %s", args[i]))
+			fmt.Println("Использование: history [--page N] [--limit M]")
+			return
+		}
+	}
+
+	if limit == 0 {
+		limit = 10
+	}
+
+	req := service.GetHistoryRequest{
+		Pagination: service.Pagination{
+			Page:        page,
+			CountOnPage: limit,
+		},
+	}
+
+	history := orderService.GetHistory(req)
+
+	if len(history.History) == 0 {
+		fmt.Println("История изменений не найдена")
 		return
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	fmt.Println("ORDER HISTORY LIST:")
-	for scanner.Scan() {
-		line := scanner.Text()
-		var record struct {
-			OrderID   uint64 `json:"order_id"`
-			Status    string `json:"status"`
-			Timestamp string `json:"created_at"`
-		}
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			fmt.Printf("ERROR: JSON_FAILED: %v\n", err)
-			continue
-		}
-		fmt.Printf("- OrderID: %d | Status: %s | CreatedAt: %s\n", record.OrderID, record.Status, record.Timestamp)
+	for _, h := range history.History {
+		fmt.Printf("%d %s %s\n",
+			h.OrderID,
+			h.Status,
+			h.CreatedAt.Format(service.DateTimeFormat))
 	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("ERROR: READ_FAILED: %v", err)
-	}
+	fmt.Printf("Всего записей: %d\n", len(history.History))
 }
 
 // handleImportOrders Импорт заказов из файла

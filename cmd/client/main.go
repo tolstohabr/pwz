@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("failed to list returns: %v", err)
 	}*/
 
-	if err := getHistory(ctx, client, 0, 2); err != nil {
+	if err := getHistory(ctx, client, 0, 10); err != nil {
 		log.Fatalf("failed to get history: %v", err)
 	}
 }
@@ -226,17 +226,14 @@ func getHistory(ctx context.Context, client desc.NotifierClient, page uint32, li
 		return fmt.Errorf("GetHistory failed: %w", err)
 	}
 
-	fmt.Printf("Page: %d, Items per page: %d\n", page, limit)
-
-	for _, record := range resp.History {
-		createdAt := record.CreatedAt.AsTime().Format(DateTimeFormat)
-		fmt.Printf("Order ID: %d Status: %s Created At: %s\n",
-			record.OrderId,
-			record.Status.String(),
-			createdAt)
+	for _, h := range resp.History {
+		changedAt := h.GetCreatedAt().AsTime().Format(DateTimeFormat)
+		fmt.Printf("%d %s %s\n",
+			h.GetOrderId(),
+			h.GetStatus().String(),
+			changedAt)
 	}
-
-	fmt.Printf("Total records: %d\n", len(resp.History))
+	fmt.Printf("Всего записей: %d\n", len(resp.History))
 
 	return nil
 }
