@@ -20,12 +20,25 @@ const (
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
+type ListReturnsRequest struct {
+	Pagination Pagination
+}
+
+type Pagination struct {
+	Page        uint32
+	CountOnPage uint32
+}
+
+type ReturnsList struct {
+	Returns []models.Order
+}
+
 type OrderService interface {
 	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
 	ReturnOrder(orderID uint64) (*OrderResponse, error)
 	ProcessOrders(ctx context.Context, userID uint64, action models.ActionType, orderIDs []uint64) ProcessResult
 	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit uint32) ([]models.Order, uint32)
-	ListReturns(page, limit int) []models.Order
+	ListReturns(req ListReturnsRequest) ReturnsList
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
 }
@@ -121,7 +134,7 @@ func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 		}
 		return &OrderResponse{
 			OrderID: orderID,
-			Status:  models.StatusDeleted, // возвращён курьеру
+			Status:  models.StatusDeleted,
 		}, nil
 	}
 
@@ -210,7 +223,6 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 
 	total := uint32(len(filtered))
 
-	// Применяем lastId (если указан)
 	if lastId > 0 {
 		if lastId > total {
 			lastId = total
@@ -218,7 +230,6 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 		filtered = filtered[total-lastId:]
 	}
 
-	// Применяем пагинацию
 	start := page * limit
 	end := start + limit
 	if start >= uint32(len(filtered)) {
@@ -233,10 +244,10 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 }
 
 // ListReturns вывести список возвратов
-func (s *orderService) ListReturns(page int, limit int) []models.Order {
+func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 	allOrders, err := s.storage.ListOrders()
 	if err != nil {
-		return []models.Order{}
+		return ReturnsList{}
 	}
 
 	var returned []models.Order
@@ -246,25 +257,27 @@ func (s *orderService) ListReturns(page int, limit int) []models.Order {
 		}
 	}
 
+	page := int(req.Pagination.Page)
+	limit := int(req.Pagination.CountOnPage)
+
 	if limit > 0 {
 		start := page * limit
 		end := start + limit
 		if start >= len(returned) {
-			return []models.Order{}
+			return ReturnsList{Returns: []models.Order{}}
 		}
 		if end > len(returned) {
 			end = len(returned)
 		}
-		return returned[start:end]
+		return ReturnsList{Returns: returned[start:end]}
 	}
 
-	return returned
+	return ReturnsList{Returns: returned}
 }
 
 // appendToHistory для добавления записи об изменении статуса в json-ку
 func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
 	record := map[string]string{
-		//"order_id":  orderID,
 		"order_id":  strconv.FormatUint(orderID, 10),
 		"status":    string(status),
 		"timestamp": time.Now().Format(DateTimeFormat),
@@ -308,7 +321,6 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 		return userOrders[i].ID < userOrders[j].ID
 	})
 
-	// найти индекс последнего заказа с lastID
 	startIdx := 0
 	if lastID != 0 {
 		for i, o := range userOrders {
@@ -319,7 +331,6 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 		}
 	}
 
-	// взять следующую пачку
 	endIdx := startIdx + limit
 	if endIdx > len(userOrders) {
 		endIdx = len(userOrders)

@@ -34,7 +34,7 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	/*if err := acceptOrder(ctx, client, 103, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
+	/*if err := acceptOrder(ctx, client, 102, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
 	}*/
 
@@ -42,19 +42,20 @@ func main() {
 		log.Fatalf("failed to list orders: %v", err)
 	}*/
 
-	// Пример обработки заказов (выдача клиенту)
-	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_ISSUE, []uint64{103}); err != nil {
+	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_ISSUE, []uint64{101}); err != nil {
 		log.Fatalf("failed to process orders: %v", err)
 	}*/
 
-	// Пример обработки заказов (прием возврата от клиента)
-	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{103}); err != nil {
+	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{101}); err != nil {
 		log.Fatalf("failed to process orders: %v", err)
 	}*/
 
-	// Пример возврата заказа курьеру
-	if err := returnOrder(ctx, client, 102); err != nil {
+	/*if err := returnOrder(ctx, client, 102); err != nil {
 		log.Fatalf("failed to return order: %v", err)
+	}*/
+
+	if err := listReturns(ctx, client, 0, 10); err != nil {
+		log.Fatalf("failed to list returns: %v", err)
 	}
 }
 
@@ -138,7 +139,6 @@ func processOrders(ctx context.Context, client desc.NotifierClient, userID uint6
 		return err
 	}
 
-	// Вывод результатов обработки
 	fmt.Println("Processed orders:")
 	for _, id := range res.Processed {
 		fmt.Printf("- %d\n", id)
@@ -167,5 +167,41 @@ func returnOrder(ctx context.Context, client desc.NotifierClient, orderID uint64
 	}
 
 	fmt.Printf("Order returned to courier: ID=%d, Status=%s\n", res.OrderId, res.Status.String())
+	return nil
+}
+
+func listReturns(ctx context.Context, client desc.NotifierClient, page uint32, limit uint32) error {
+	req := &desc.ListReturnsRequest{
+		Pagination: &desc.Pagination{
+			Page:        page,
+			CountOnPage: limit,
+		},
+	}
+
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	resp, err := client.ListReturns(ctx, req)
+	if err != nil {
+		return fmt.Errorf("ListReturns failed: %w", err)
+	}
+
+	fmt.Println("Returns list:")
+	for _, ret := range resp.Returns {
+		fmt.Printf("Order ID: %d, User ID: %d, Status: %s, Expires: %v, Weight: %.2f, Price: %.2f",
+			ret.OrderId,
+			ret.UserId,
+			ret.Status.String(),
+			ret.ExpiresAt.AsTime().Format(time.RFC3339),
+			ret.Weight,
+			ret.TotalPrice)
+
+		if ret.Package != nil {
+			fmt.Printf(", Package: %s\n", ret.Package.String())
+		} else {
+			fmt.Println(", Package: none")
+		}
+	}
+
+	fmt.Printf("PAGE: %d LIMIT: %d\n", page, limit)
 	return nil
 }

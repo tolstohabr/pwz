@@ -358,39 +358,43 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 
 // handleListReturns Получить список возвратов
 func handleListReturns(orderService service.OrderService, args []string) {
-	var err error
-	var page, limit int
-	page = 0
-	limit = 20
+	var page uint32 = 0
+	var limit uint32 = 20
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--page":
 			if i+1 < len(args) {
-				page, err = strconv.Atoi(args[i+1])
+				p, err := strconv.Atoi(args[i+1])
 				if err != nil {
-					fmt.Printf("ERROR: STRCONV_FAILED: %v", err)
+					fmt.Printf("ERROR: invalid --page value: %v\n", err)
+					return
 				}
+				page = uint32(p)
 				i++
 			}
 		case "--limit":
 			if i+1 < len(args) {
-				limit, _ = strconv.Atoi(args[i+1])
+				l, err := strconv.Atoi(args[i+1])
+				if err != nil {
+					fmt.Printf("ERROR: invalid --limit value: %v\n", err)
+					return
+				}
+				limit = uint32(l)
 				i++
 			}
 		}
 	}
 
-	returns := orderService.ListReturns(page, limit)
-	for _, o := range returns {
-		//TODO: удалить потом мусор
-		/*было
-		returnedAt := "Нет данных"
-		if o.IssuedAt != nil {
-			returnedAt = o.IssuedAt.Format(service.DateTimeFormat)
-		}
-		fmt.Printf("RETURN: %s %s %s\n", o.ID, o.UserID, returnedAt)*/
-		//стало
+	req := service.ListReturnsRequest{
+		Pagination: service.Pagination{
+			Page:        page,
+			CountOnPage: limit,
+		},
+	}
+
+	res := orderService.ListReturns(req)
+	for _, o := range res.Returns {
 		approxReturnTime := o.ExpiresAt.Add(-service.ExpiredTime)
 		fmt.Printf("RETURN: %d %d %s\n", o.ID, o.UserID, approxReturnTime.Format(service.DateTimeFormat))
 	}

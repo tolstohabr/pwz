@@ -9,7 +9,6 @@ import (
 )
 
 func (i *Implementation) ListOrders(ctx context.Context, req *desc.ListOrdersRequest) (*desc.OrdersList, error) {
-	// Преобразование параметров запроса
 	var lastId uint32
 	if req.LastN != nil {
 		lastId = *req.LastN
@@ -20,15 +19,12 @@ func (i *Implementation) ListOrders(ctx context.Context, req *desc.ListOrdersReq
 		page = req.Pagination.Page
 		limit = req.Pagination.CountOnPage
 	} else {
-		// Значения по умолчанию для пагинации
 		page = 0
 		limit = 10
 	}
 
-	// Вызов сервиса
 	orders, total := i.orderService.ListOrders(ctx, req.UserId, req.InPvz, lastId, page, limit)
 
-	// Преобразование результатов в protobuf формат
 	pbOrders := make([]*desc.Order, 0, len(orders))
 	for _, o := range orders {
 		pbOrder := &desc.Order{

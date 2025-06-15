@@ -8,22 +8,18 @@ import (
 )
 
 func (i *Implementation) ProcessOrders(ctx context.Context, req *desc.ProcessOrdersRequest) (*desc.ProcessResult, error) {
-	// Преобразование типов из protobuf в модели сервиса
 	userID := req.GetUserId()
 	actionType := convertActionTypeFromProto(req.GetAction())
 	orderIDs := req.GetOrderIds()
 
-	// Вызов сервисного слоя
 	result := i.orderService.ProcessOrders(ctx, userID, actionType, orderIDs)
 
-	// Преобразование результата в protobuf формат
 	return &desc.ProcessResult{
 		Processed: result.Processed,
 		Errors:    result.Errors,
 	}, nil
 }
 
-// convertActionTypeFromProto преобразует ActionType из protobuf в models.ActionType
 func convertActionTypeFromProto(actionType desc.ActionType) models.ActionType {
 	switch actionType {
 	case desc.ActionType_ACTION_TYPE_ISSUE:
@@ -35,7 +31,6 @@ func convertActionTypeFromProto(actionType desc.ActionType) models.ActionType {
 	}
 }
 
-// convertStatusToProto преобразует OrderStatus в protobuf OrderStatus
 func convertStatusToProto(status models.OrderStatus) desc.OrderStatus {
 	switch status {
 	case models.StatusExpects:
@@ -51,7 +46,6 @@ func convertStatusToProto(status models.OrderStatus) desc.OrderStatus {
 	}
 }
 
-// convertPackageToProto преобразует PackageType в protobuf PackageType
 func convertPackageToProto(pkg models.PackageType) desc.PackageType {
 	switch pkg {
 	case models.PackageBag:
