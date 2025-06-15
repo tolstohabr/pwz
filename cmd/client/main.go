@@ -33,26 +33,26 @@ func main() {
 	defer cancel()
 
 	client := desc.NewNotifierClient(conn)
-	/*
-		if err := acceptOrder(ctx, client); err != nil {
-			log.Fatalf("failed to accept pwz: %v", err)
-		}
-	*/
-	if err := listOrders(ctx, client, 1, true, nil, 0, 10); err != nil {
-		log.Fatalf("failed to list orders: %v", err)
+
+	if err := acceptOrder(ctx, client, 3013, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BAG), 2.0, 100.0); err != nil {
+		log.Fatalf("failed to accept order: %v", err)
 	}
+
+	/*if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
+		log.Fatalf("failed to list orders: %v", err)
+	}*/
 }
 
-func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
+func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64, userID uint64, expiresAt time.Time, pkg *desc.PackageType, weight float32, price float32) error {
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.AcceptOrderRequest{
-		OrderId:   3010,
-		UserId:    1,
-		ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
-		Package:   ptr(desc.PackageType_PACKAGE_TYPE_UNSPECIFIED),
-		Weight:    1,
-		Price:     100,
+		OrderId:   orderID,
+		UserId:    userID,
+		ExpiresAt: timestamppb.New(expiresAt),
+		Package:   pkg,
+		Weight:    weight,
+		Price:     price,
 	}
 
 	res, err := client.AcceptOrder(ctx, req)
