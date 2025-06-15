@@ -49,7 +49,7 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 		ID:          orderID,
 		UserID:      userID,
 		ExpiresAt:   expiresAt,
-		Status:      models.StatusAccepted,
+		Status:      models.StatusExpects,
 		Weight:      weight,
 		Price:       price,
 		PackageType: package_type,
@@ -80,7 +80,7 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 	//расчёт всей стоимости
 	newOrder.CalculateTotalPrice()
 
-	appendToHistory(ctx, orderID, models.StatusAccepted)
+	appendToHistory(ctx, orderID, models.StatusExpects)
 
 	return newOrder, s.storage.SaveOrder(newOrder)
 }
@@ -88,7 +88,7 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 // IsValidPackage валидна ли упаковка
 func IsValidPackage(pkg models.PackageType) bool {
 	switch pkg {
-	case models.PackageBag, models.PackageBox, models.PackageFilm, models.PackageBagFilm, models.PackageBoxFilm, models.PackageNone:
+	case models.PackageBag, models.PackageBox, models.PackageTape, models.PackageBagTape, models.PackageBoxTape, models.PackageUnspecified:
 		return true
 	}
 	return false
@@ -102,7 +102,7 @@ func (s *orderService) ReturnOrder(orderID uint64) error {
 	}
 
 	//если заказ у клиента
-	if order.Status == models.StatusIssued {
+	if order.Status == models.StatusAccepted {
 		return domainErrors.ErrOrderAlreadyIssued
 	}
 
@@ -139,10 +139,10 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, action 
 				results = append(results, fmt.Sprintf("ERROR %d: STORAGE_EXPIRED: срок хранения истёк", id))
 				continue
 			}
-			order.Status = models.StatusIssued
+			order.Status = models.StatusAccepted
 			// тут обновлю ExpiresAt на текущее время + 48 часов вместо IssuedAt
 			order.ExpiresAt = time.Now().Add(ExpiredTime)
-			appendToHistory(ctx, order.ID, models.StatusIssued)
+			appendToHistory(ctx, order.ID, models.StatusAccepted)
 		} else if action == "return" {
 			// Проверяем, не истёк ли новый срок возврата (ExpiresAt)
 			if time.Now().After(order.ExpiresAt) {
@@ -181,7 +181,7 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 			continue
 		}
 		if inPvzOnly {
-			if o.Status != models.StatusAccepted && o.Status != models.StatusReturned {
+			if o.Status != models.StatusExpects && o.Status != models.StatusReturned {
 				continue
 			}
 		}

@@ -40,7 +40,7 @@ func (i *Implementation) ListOrders(ctx context.Context, req *desc.ListOrdersReq
 			TotalPrice: o.Price,
 		}
 
-		if o.PackageType != "" && o.PackageType != models.PackageNone {
+		if o.PackageType != "" && o.PackageType != models.PackageUnspecified {
 			pbPackage := mapPackageTypeToPb(o.PackageType)
 			pbOrder.Package = &pbPackage
 		}
@@ -56,12 +56,14 @@ func (i *Implementation) ListOrders(ctx context.Context, req *desc.ListOrdersReq
 
 func mapOrderStatusToPb(status models.OrderStatus) desc.OrderStatus {
 	switch status {
+	case models.StatusExpects:
+		return desc.OrderStatus_ORDER_STATUS_EXPECTS
 	case models.StatusAccepted:
 		return desc.OrderStatus_ORDER_STATUS_ACCEPTED
-	case models.StatusIssued:
-		return desc.OrderStatus_ORDER_STATUS_EXPECTS
 	case models.StatusReturned:
 		return desc.OrderStatus_ORDER_STATUS_RETURNED
+	case models.StatusDeleted:
+		return desc.OrderStatus_ORDER_STATUS_DELETED
 	default:
 		return desc.OrderStatus_ORDER_STATUS_UNSPECIFIED
 	}
@@ -73,11 +75,11 @@ func mapPackageTypeToPb(pkgType models.PackageType) desc.PackageType {
 		return desc.PackageType_PACKAGE_TYPE_BAG
 	case models.PackageBox:
 		return desc.PackageType_PACKAGE_TYPE_BOX
-	case models.PackageFilm:
+	case models.PackageTape:
 		return desc.PackageType_PACKAGE_TYPE_TAPE
-	case models.PackageBagFilm:
+	case models.PackageBagTape:
 		return desc.PackageType_PACKAGE_TYPE_BAG_TAPE
-	case models.PackageBoxFilm:
+	case models.PackageBoxTape:
 		return desc.PackageType_PACKAGE_TYPE_BOX_TAPE
 	default:
 		return desc.PackageType_PACKAGE_TYPE_UNSPECIFIED

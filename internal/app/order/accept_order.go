@@ -25,7 +25,7 @@ func (i *Implementation) AcceptOrder(ctx context.Context, req *desc.AcceptOrderR
 	}
 
 	return &desc.OrderResponse{
-		Status:  desc.OrderStatus_ORDER_STATUS_ACCEPTED,
+		Status:  desc.OrderStatus_ORDER_STATUS_EXPECTS,
 		OrderId: order.ID,
 	}, nil
 }
@@ -37,12 +37,12 @@ func toInternalPackage(pt desc.PackageType) models.PackageType {
 	case desc.PackageType_PACKAGE_TYPE_BOX:
 		return models.PackageBox
 	case desc.PackageType_PACKAGE_TYPE_TAPE:
-		return models.PackageFilm
+		return models.PackageTape
 	case desc.PackageType_PACKAGE_TYPE_BAG_TAPE:
-		return models.PackageBagFilm
+		return models.PackageBagTape
 	case desc.PackageType_PACKAGE_TYPE_BOX_TAPE:
-		return models.PackageBoxFilm
+		return models.PackageBoxTape
 	default:
-		return models.PackageNone
+		return models.PackageUnspecified
 	}
 }

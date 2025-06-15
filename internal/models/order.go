@@ -11,16 +11,23 @@ type PackageType string
 
 const (
 	//статусы
-	StatusAccepted OrderStatus = "ACCEPTED" //заказ принят от курьера и лежит на складе
-	StatusIssued   OrderStatus = "ISSUED"   //заказ у клиента
-	StatusReturned OrderStatus = "RETURNED" //заказ возвращен
+	//старые
+	/*StatusExpects OrderStatus = "ACCEPTED" //заказ принят от курьера и лежит на складе
+	StatusAccepted   OrderStatus = "ISSUED"   //заказ у клиента
+	StatusReturned OrderStatus = "RETURNED" //заказ возвращен*/
+	StatusUnspecified OrderStatus = "UNSPECIFIED" // не указан
+	StatusExpects     OrderStatus = "EXPECTS"     // получен от курьера, ожидает выдачи клиенту
+	StatusAccepted    OrderStatus = "ACCEPTED"    // выдан клиенту
+	StatusReturned    OrderStatus = "RETURNED"    // возвращен клиентом в ПВЗ
+	StatusDeleted     OrderStatus = "DELETED"     // возвращен курьеру из ПВЗ(удален)
+
 	//виды упаковки
-	PackageBag     PackageType = "bag"      //пакет
-	PackageBox     PackageType = "box"      //коробка
-	PackageFilm    PackageType = "film"     //пленка
-	PackageBagFilm PackageType = "bag+film" //пакет и пленка
-	PackageBoxFilm PackageType = "box+film" //коробка и пленка
-	PackageNone    PackageType = "none"     //нету и пленка
+	PackageBag         PackageType = "bag"         // пакет
+	PackageBox         PackageType = "box"         // коробка
+	PackageTape        PackageType = "tape"        // пленка
+	PackageBagTape     PackageType = "bag+tape"    // пакет и пленка
+	PackageBoxTape     PackageType = "box+tape"    // коробка и пленка
+	PackageUnspecified PackageType = "unspecified" // нету
 )
 
 type Order struct {
@@ -40,13 +47,13 @@ func (o *Order) CalculateTotalPrice() {
 		o.Price += 5
 	case PackageBox:
 		o.Price += 20
-	case PackageFilm:
+	case PackageTape:
 		o.Price += 1
-	case PackageBagFilm:
+	case PackageBagTape:
 		o.Price += 6
-	case PackageBoxFilm:
+	case PackageBoxTape:
 		o.Price += 21
-	case PackageNone:
+	case PackageUnspecified:
 		o.Price += 0
 	}
 }
@@ -54,7 +61,7 @@ func (o *Order) CalculateTotalPrice() {
 // валидация веса
 func (o *Order) ValidationWeight() error {
 	switch o.PackageType {
-	case PackageNone:
+	case PackageUnspecified:
 		return nil
 	case PackageBag:
 		if o.Weight >= 10 {
@@ -66,14 +73,14 @@ func (o *Order) ValidationWeight() error {
 			return domainErrors.ErrWeightTooHeavy
 		}
 		return nil
-	case PackageFilm:
+	case PackageTape:
 		return nil
-	case PackageBagFilm:
+	case PackageBagTape:
 		if o.Weight >= 10 {
 			return domainErrors.ErrWeightTooHeavy
 		}
 		return nil
-	case PackageBoxFilm:
+	case PackageBoxTape:
 		if o.Weight >= 30 {
 			return domainErrors.ErrWeightTooHeavy
 		}

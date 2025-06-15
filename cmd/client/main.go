@@ -34,7 +34,7 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := acceptOrder(ctx, client, 3013, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BAG), 2.0, 100.0); err != nil {
+	if err := acceptOrder(ctx, client, 103, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
 	}
 
