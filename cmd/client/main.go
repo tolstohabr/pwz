@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	desc "PWZ1.0/pkg/pwz"
@@ -17,6 +19,18 @@ const (
 	grpcAddress    = "localhost:50051"
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
+
+// TODO:
+type ImportJSON struct {
+	Orders []struct {
+		OrderID   uint64  `json:"order_id"`
+		UserID    uint64  `json:"user_id"`
+		ExpiresAt string  `json:"expires_at"` // формат: RFC3339
+		Package   string  `json:"package"`    // опционально
+		Weight    float32 `json:"weight"`
+		Price     float32 `json:"price"`
+	} `json:"orders"`
+}
 
 func main() {
 	conn, err := grpc.NewClient(grpcAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -39,9 +53,9 @@ func main() {
 		log.Fatalf("failed to accept order: %v", err)
 	}*/
 
-	/*if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
+	if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
 		log.Fatalf("failed to list orders: %v", err)
-	}*/
+	}
 
 	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_ISSUE, []uint64{101}); err != nil {
 		log.Fatalf("failed to process orders: %v", err)
@@ -59,9 +73,13 @@ func main() {
 		log.Fatalf("failed to list returns: %v", err)
 	}*/
 
-	if err := getHistory(ctx, client, 0, 10); err != nil {
+	/*if err := getHistory(ctx, client, 0, 10); err != nil {
 		log.Fatalf("failed to get history: %v", err)
-	}
+	}*/
+
+	/*if err := importOrdersFromFile(ctx, client, "orders2.json"); err != nil {
+		log.Fatalf("failed to import orders: %v", err)
+	}*/
 }
 
 func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64, userID uint64, expiresAt time.Time, pkg *desc.PackageType, weight float32, price float32) error {
@@ -235,5 +253,61 @@ func getHistory(ctx context.Context, client desc.NotifierClient, page uint32, li
 	}
 	fmt.Printf("Всего записей: %d\n", len(resp.History))
 
+	return nil
+}
+
+func importOrdersFromFile(ctx context.Context, client desc.NotifierClient, filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read JSON file: %w", err)
+	}
+
+	var parsed ImportJSON
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	var orders []*desc.AcceptOrderRequest
+	for _, o := range parsed.Orders {
+		t, err := time.Parse(time.RFC3339, o.ExpiresAt)
+		if err != nil {
+			return fmt.Errorf("invalid time format for order %d: %w", o.OrderID, err)
+		}
+
+		var pkg desc.PackageType = desc.PackageType_PACKAGE_TYPE_UNSPECIFIED
+		if o.Package != "" {
+			if parsedPkg, ok := desc.PackageType_value[o.Package]; ok {
+				pkg = desc.PackageType(parsedPkg)
+			} else {
+				log.Printf("Warning: unknown package type for order %d: %s", o.OrderID, o.Package)
+			}
+		}
+
+		orders = append(orders, &desc.AcceptOrderRequest{
+			OrderId:   o.OrderID,
+			UserId:    o.UserID,
+			ExpiresAt: timestamppb.New(t),
+			Package:   &pkg,
+			Weight:    o.Weight,
+			Price:     o.Price,
+		})
+	}
+
+	req := &desc.ImportOrdersRequest{
+		Orders: orders,
+	}
+
+	resp, err := client.ImportOrders(ctx, req)
+	if err != nil {
+		return fmt.Errorf("ImportOrders RPC failed: %w", err)
+	}
+
+	fmt.Printf("Импортировано заказов: %d\n", resp.Imported)
+	if len(resp.Errors) > 0 {
+		fmt.Println("Ошибки при импорте (order_ids):")
+		for _, id := range resp.Errors {
+			fmt.Printf("- %d\n", id)
+		}
+	}
 	return nil
 }

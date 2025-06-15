@@ -1,1 +1,20 @@
-[{"id":1,"user_id":1001,"expires_at":"2025-07-07T17:38:02.3314854+03:00","status":"RETURNED","package_type":"film","weight":1,"price":101}]
+{
+  "orders": [
+    {
+      "order_id": 3000,
+      "user_id": 1,
+      "expires_at": "2025-08-08T18:30:00Z",
+      "package": "PACKAGE_TYPE_BOX_TAPE",
+      "weight": 1.2,
+      "price": 120.5
+    },
+    {
+      "order_id": 3001,
+      "user_id": 1,
+      "expires_at": "2025-08-08T18:30:00Z",
+      "package": "PACKAGE_TYPE_BAG",
+      "weight": 0.8,
+      "price": 90.0
+    }
+  ]
+}
