@@ -197,7 +197,7 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 
 // ListOrders вывести список заказов
 func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId uint32, page uint32, limit uint32) ([]models.Order, uint32) {
-	if limit <= 0 { // Было `if limit <=`, теперь исправлено на `if limit <= 0`
+	if limit <= 0 {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
 		return nil, 0
 	}

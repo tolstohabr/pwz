@@ -1,8 +1,1 @@
-{"order_id":110,"status":"EXPECTS","timestamp":"2025-06-15T07:24:07.2958518+03:00"}
-{"order_id":111,"status":"EXPECTS","timestamp":"2025-06-15T07:24:12.3094045+03:00"}
-{"order_id":112,"status":"EXPECTS","created_at":"2025-06-15 07:55:53"}
-{"order_id":113,"status":"EXPECTS","created_at":"2025-06-15T07:57:05+03:00"}
-{"order_id":114,"status":"EXPECTS","timestamp":"2025-06-15T07:59:39+03:00"}
-{"order_id":115,"status":"EXPECTS","created_at":"2025-06-15T08:07:37+03:00"}
-{"order_id":101,"status":"ACCEPTED","created_at":"2025-06-15T08:08:04+03:00"}
 {"order_id":116,"status":"EXPECTS","created_at":"2025-06-15T08:08:53+03:00"}

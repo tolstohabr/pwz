@@ -12,7 +12,6 @@ import (
 )
 
 func (i *Implementation) GetHistory(ctx context.Context, req *pwz.GetHistoryRequest) (*pwz.OrderHistoryList, error) {
-	// Открываем файл с историей
 	file, err := os.Open("order_history.json")
 	if err != nil {
 		return nil, err
@@ -21,7 +20,6 @@ func (i *Implementation) GetHistory(ctx context.Context, req *pwz.GetHistoryRequ
 
 	var historyList []*pwz.OrderHistory
 
-	// Читаем файл построчно
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -32,22 +30,19 @@ func (i *Implementation) GetHistory(ctx context.Context, req *pwz.GetHistoryRequ
 		}
 
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			continue // Пропускаем некорректные записи
+			continue
 		}
 
-		// Парсим время из строки
 		createdAt, err := time.Parse(time.RFC3339, record.Timestamp)
 		if err != nil {
-			continue // Пропускаем записи с некорректным временем
+			continue
 		}
 
-		// Преобразуем в protobuf Timestamp
 		ts := &timestamp.Timestamp{
 			Seconds: createdAt.Unix(),
 			Nanos:   int32(createdAt.Nanosecond()),
 		}
 
-		// Добавляем запись в результат
 		historyList = append(historyList, &pwz.OrderHistory{
 			OrderId:   record.OrderID,
 			Status:    pwz.OrderStatus(pwz.OrderStatus_value[record.Status]), // Конвертируем статус
@@ -59,7 +54,6 @@ func (i *Implementation) GetHistory(ctx context.Context, req *pwz.GetHistoryRequ
 		return nil, err
 	}
 
-	// Применяем пагинацию, если требуется
 	if req.GetPagination() != nil {
 		page := req.GetPagination().GetPage()
 		perPage := req.GetPagination().GetCountOnPage()
