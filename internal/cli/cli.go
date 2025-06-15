@@ -56,17 +56,17 @@ func (c *CLI) Run() {
 		switch args[0] {
 		case "help":
 			printHelp()
-		case "accept-pwz":
+		case "accept-order":
 			handleAcceptOrder(ctx, c.orderService, args[1:])
-		case "return-pwz":
+		case "return-order":
 			handleReturnOrder(ctx, c.orderService, args[1:])
-		case "process-pwz":
+		case "process-order":
 			handleProcessOrders(ctx, c.orderService, args[1:])
 		case "list-orders":
 			handleListOrders(ctx, c.orderService, args[1:])
 		case "list-returns":
 			handleListReturns(c.orderService, args[1:])
-		case "pwz-history":
+		case "order-history":
 			handleOrderHistory(ctx)
 		case "import-orders":
 			handleImportOrders(ctx, c.orderService, args[1:])
@@ -81,12 +81,12 @@ func (c *CLI) Run() {
 func printHelp() {
 	fmt.Println("Список команд:")
 	fmt.Println("  help")
-	fmt.Println("  accept-pwz     Принять заказ от курьера")
-	fmt.Println("  return-pwz     Вернуть заказ") //удалить значит
-	fmt.Println("  process-pwz   	Выдать или принять возврат")
+	fmt.Println("  accept-order     Принять заказ от курьера")
+	fmt.Println("  return-order     Вернуть заказ") //удалить значит
+	fmt.Println("  process-order   	Выдать или принять возврат")
 	fmt.Println("  list-orders    	Получить список заказов")
 	fmt.Println("  list-returns    	Получить список возвратов")
-	fmt.Println("  pwz-history   	Получить историю заказов")
+	fmt.Println("  order-history   	Получить историю заказов")
 	fmt.Println("  import-orders   	Импорт заказов из файла")
 	fmt.Println("  scroll-orders   	Прокрутка")
 	fmt.Println("  exit             Выйти из приложения")
@@ -101,7 +101,7 @@ func handleAcceptOrder(ctx context.Context, orderService service.OrderService, a
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--pwz-id":
+		case "--order-id":
 			if i+1 < len(args) {
 				orderIDStr = args[i+1]
 				i++
