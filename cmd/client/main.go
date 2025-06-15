@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -32,18 +33,21 @@ func main() {
 	defer cancel()
 
 	client := desc.NewNotifierClient(conn)
-
-	if err := acceptOrder(ctx, client); err != nil {
-		log.Fatalf("failed to accept pwz: %v", err)
+	/*
+		if err := acceptOrder(ctx, client); err != nil {
+			log.Fatalf("failed to accept pwz: %v", err)
+		}
+	*/
+	if err := listOrders(ctx, client, 1, true, nil, 0, 10); err != nil {
+		log.Fatalf("failed to list orders: %v", err)
 	}
 }
 
-// TODO: accept order
 func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.AcceptOrderRequest{
-		OrderId:   3000,
+		OrderId:   3010,
 		UserId:    1,
 		ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
 		Package:   ptr(desc.PackageType_PACKAGE_TYPE_UNSPECIFIED),
@@ -62,4 +66,45 @@ func acceptOrder(ctx context.Context, client desc.NotifierClient) error {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, inPvz bool, lastN *uint32, page uint32, limit uint32) error {
+	req := &desc.ListOrdersRequest{
+		UserId: userID,
+		InPvz:  inPvz,
+		LastN:  lastN,
+	}
+
+	if page > 0 || limit > 0 {
+		req.Pagination = &desc.Pagination{
+			Page:        page,
+			CountOnPage: limit,
+		}
+	}
+
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "bearer my-token"))
+
+	resp, err := client.ListOrders(ctx, req)
+	if err != nil {
+		return fmt.Errorf("ListOrders failed: %w", err)
+	}
+
+	for _, order := range resp.Orders {
+		fmt.Printf("Order ID: %d, User ID: %d, Status: %s, Expires: %v, Weight: %.2f, Price: %.2f",
+			order.OrderId,
+			order.UserId,
+			order.Status.String(),
+			order.ExpiresAt.AsTime().Format(time.RFC3339),
+			order.Weight,
+			order.TotalPrice)
+
+		if order.Package != nil {
+			fmt.Printf(", Package: %s\n", order.Package.String())
+		} else {
+			fmt.Println(", Package: none")
+		}
+	}
+	fmt.Printf("Total orders: %d\n", resp.Total)
+
+	return nil
 }

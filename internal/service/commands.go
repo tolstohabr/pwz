@@ -25,7 +25,7 @@ type OrderService interface {
 	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
 	ReturnOrder(orderID uint64) error
 	ProcessOrders(ctx context.Context, userID uint64, action string, orderIDs []uint64) []string
-	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit int) []models.Order
+	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit uint32) ([]models.Order, uint32)
 	ListReturns(page, limit int) []models.Order
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
@@ -164,15 +164,15 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, action 
 }
 
 // ListOrders вывести список заказов
-func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount int, page int, limit int) []models.Order {
-	if limit <= 0 {
+func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId uint32, page uint32, limit uint32) ([]models.Order, uint32) {
+	if limit <= 0 { // Было `if limit <=`, теперь исправлено на `if limit <= 0`
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
-		return nil
+		return nil, 0
 	}
 
 	allOrders, err := s.storage.ListOrders()
 	if err != nil {
-		return []models.Order{}
+		return []models.Order{}, 0
 	}
 
 	filtered := make([]models.Order, 0)
@@ -188,22 +188,28 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 		filtered = append(filtered, o)
 	}
 
-	if lastCount > 0 && lastCount < len(filtered) {
-		filtered = filtered[len(filtered)-lastCount:]
+	total := uint32(len(filtered))
+
+	// Применяем lastId (если указан)
+	if lastId > 0 {
+		if lastId > total {
+			lastId = total
+		}
+		filtered = filtered[total-lastId:]
 	}
 
-	//if limit > 0 {
+	// Применяем пагинацию
 	start := page * limit
 	end := start + limit
-	if start >= len(filtered) {
-		return []models.Order{}
+	if start >= uint32(len(filtered)) {
+		return []models.Order{}, total
 	}
-	if end > len(filtered) {
-		end = len(filtered)
+	if end > uint32(len(filtered)) {
+		end = uint32(len(filtered))
 	}
 	filtered = filtered[start:end]
 
-	return filtered
+	return filtered, total
 }
 
 // ListReturns вывести список возвратов

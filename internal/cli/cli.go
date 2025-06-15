@@ -282,8 +282,8 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 	var userIDStr string
 	var userID uint64
 	var inPvzOnly bool
-	var lastCount int
-	var page, limit int
+	var lastId uint32
+	var page, limit uint32
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -296,25 +296,25 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 			inPvzOnly = true
 		case "--last":
 			if i+1 < len(args) {
-				n, err := strconv.Atoi(args[i+1])
+				n, err := strconv.ParseUint(args[i+1], 10, 32)
 				if err == nil {
-					lastCount = n
+					lastId = uint32(n)
 				}
 				i++
 			}
 		case "--page":
 			if i+1 < len(args) {
-				n, err := strconv.Atoi(args[i+1])
+				n, err := strconv.ParseUint(args[i+1], 10, 32)
 				if err == nil {
-					page = n
+					page = uint32(n)
 				}
 				i++
 			}
 		case "--limit":
 			if i+1 < len(args) {
-				n, err := strconv.Atoi(args[i+1])
+				n, err := strconv.ParseUint(args[i+1], 10, 32)
 				if err == nil {
-					limit = n
+					limit = uint32(n)
 				}
 				i++
 			}
@@ -333,7 +333,7 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 		return
 	}
 
-	orders := orderService.ListOrders(ctx, userID, inPvzOnly, lastCount, page, limit)
+	orders, total := orderService.ListOrders(ctx, userID, inPvzOnly, lastId, page, limit)
 	for _, o := range orders {
 		fmt.Printf("ORDER: %d %d %s %s %s %.2f %.2f\n",
 			o.ID,
@@ -345,7 +345,7 @@ func handleListOrders(ctx context.Context, orderService service.OrderService, ar
 			o.Price,
 		)
 	}
-	fmt.Printf("TOTAL: %d\n", len(orders))
+	fmt.Printf("TOTAL: %d\n", total)
 }
 
 // handleListReturns Получить список возвратов
