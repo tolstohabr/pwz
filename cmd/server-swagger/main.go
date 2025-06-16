@@ -24,7 +24,9 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+		if _, err := w.Write(b); err != nil {
+			log.Printf("failed to write response: %v", err)
+		}
 	})
 
 	mux.HandleFunc("/swagger/*", httpSwagger.Handler(
