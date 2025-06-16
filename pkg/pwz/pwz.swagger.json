@@ -421,7 +421,8 @@
         "title": {
           "type": "string"
         }
-      }
+      },
+      "title": "было для тестов"
     },
     "notifierMessageResponse": {
       "type": "object",

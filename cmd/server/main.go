@@ -26,6 +26,7 @@ func main() {
 	orderService := service.NewOrderService(storage)
 	orderServer := order.NewHandler(orderService)
 
+	//TODO: mw.ErrorLoggingInterceptor сюда добавить
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(mw.ValidateInterceptor, mw.RateLimiterInterceptor(limiter.New(memory.NewStore(), limiter.Rate{Period: 10 * time.Second, Limit: 2}))))
 	reflection.Register(grpcServer)
 	desc.RegisterNotifierServer(grpcServer, orderServer)

@@ -21,6 +21,8 @@ var (
 	//todo: новые ошибки
 	ErrWeightTooHeavy = errors.New("вес слишком большой")
 	ErrInvalidPackage = errors.New("неизвестная упаковка или другая ошибка упаковки") //можно просто VALIDATION_FAILED
+	//todo: ошибки gRPC и HTTP
+	//
 )
 
 // Привязка ошибок к кодам

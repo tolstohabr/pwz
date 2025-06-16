@@ -10,6 +10,7 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "PWZ1.0/pkg/pwz";
 
+//было для тестов
 message MessageRequest {
   string text = 1 [(validate.rules).string = {min_len: 1, max_len: 200}];
   Priority priority = 2 [(validate.rules).enum = {defined_only: true}];
@@ -142,8 +143,8 @@ message AcceptOrderRequest {
   uint64 user_id = 2;
   google.protobuf.Timestamp expires_at = 3;
   optional PackageType package = 4;
-  float weight = 5;
-  float price = 6;
+  float weight = 5 [(validate.rules).float = {gt: 0}];
+  float price = 6 [(validate.rules).float = {gte: 0}];
 }
 
 message OrderIdRequest {
@@ -173,8 +174,8 @@ message ListOrdersRequest {
 }
 
 message Pagination {
-  uint32 page = 1;
-  uint32 count_on_page = 2;
+  uint32 page = 1 [(validate.rules).uint32 = {gte: 0}];
+  uint32 count_on_page = 2 [(validate.rules).uint32 = {gte: 0, lte: 100}];
 }
 
 message ListReturnsRequest {
@@ -182,7 +183,7 @@ message ListReturnsRequest {
 }
 
 message ImportOrdersRequest {
-  repeated AcceptOrderRequest orders = 1;
+  repeated AcceptOrderRequest orders = 1 [(validate.rules).repeated = {min_items: 1}];
 }
 
 message GetHistoryRequest {
@@ -201,7 +202,7 @@ message ProcessResult {
 
 message OrdersList {
   repeated Order orders = 1;
-  int32 total = 2;
+  int32 total = 2 [(validate.rules).int32 = {gte: 0}];
 }
 
 message ReturnsList {
@@ -213,7 +214,7 @@ message OrderHistoryList {
 }
 
 message ImportResult {
-  int32 imported = 1;
+  int32 imported = 1 [(validate.rules).int32 = {gte: 0}];
   repeated uint64 errors = 2;
 }
 
@@ -222,8 +223,8 @@ message Order {
   uint64 user_id = 2;
   OrderStatus status = 3;
   google.protobuf.Timestamp expires_at = 4;
-  float weight = 5;
-  float total_price = 6;
+  float weight = 5 [(validate.rules).float = {gt: 0}];
+  float total_price = 6 [(validate.rules).float = {gte: 0}];
   optional PackageType package = 7;
 }
 

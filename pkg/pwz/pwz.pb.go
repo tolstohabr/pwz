@@ -260,6 +260,7 @@ func (OrderStatus) EnumDescriptor() ([]byte, []int) {
 	return file_pwz_pwz_proto_rawDescGZIP(), []int{3}
 }
 
+// было для тестов
 type MessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
@@ -1293,15 +1294,19 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\n" +
 	"\b_comment\"!\n" +
 	"\x0fMessageResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\rR\x02id\"\xf3\x01\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"\x8b\x02\n" +
 	"\x12AcceptOrderRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x04R\x06userId\x129\n" +
 	"\n" +
 	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x124\n" +
-	"\apackage\x18\x04 \x01(\x0e2\x15.notifier.PackageTypeH\x00R\apackage\x88\x01\x01\x12\x16\n" +
-	"\x06weight\x18\x05 \x01(\x02R\x06weight\x12\x14\n" +
-	"\x05price\x18\x06 \x01(\x02R\x05priceB\n" +
+	"\apackage\x18\x04 \x01(\x0e2\x15.notifier.PackageTypeH\x00R\apackage\x88\x01\x01\x12\"\n" +
+	"\x06weight\x18\x05 \x01(\x02B\n" +
+	"\xfaB\a\n" +
+	"\x05%\x00\x00\x00\x00R\x06weight\x12 \n" +
+	"\x05price\x18\x06 \x01(\x02B\n" +
+	"\xfaB\a\n" +
+	"\x05-\x00\x00\x00\x00R\x05priceB\n" +
 	"\n" +
 	"\b_package\"+\n" +
 	"\x0eOrderIdRequest\x12\x19\n" +
@@ -1318,17 +1323,17 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"pagination\x18\x04 \x01(\v2\x14.notifier.PaginationH\x01R\n" +
 	"pagination\x88\x01\x01B\t\n" +
 	"\a_last_nB\r\n" +
-	"\v_pagination\"D\n" +
+	"\v_pagination\"X\n" +
 	"\n" +
-	"Pagination\x12\x12\n" +
-	"\x04page\x18\x01 \x01(\rR\x04page\x12\"\n" +
-	"\rcount_on_page\x18\x02 \x01(\rR\vcountOnPage\"J\n" +
+	"Pagination\x12\x1b\n" +
+	"\x04page\x18\x01 \x01(\rB\a\xfaB\x04*\x02(\x00R\x04page\x12-\n" +
+	"\rcount_on_page\x18\x02 \x01(\rB\t\xfaB\x06*\x04\x18d(\x00R\vcountOnPage\"J\n" +
 	"\x12ListReturnsRequest\x124\n" +
 	"\n" +
 	"pagination\x18\x01 \x01(\v2\x14.notifier.PaginationR\n" +
-	"pagination\"K\n" +
-	"\x13ImportOrdersRequest\x124\n" +
-	"\x06orders\x18\x01 \x03(\v2\x1c.notifier.AcceptOrderRequestR\x06orders\"I\n" +
+	"pagination\"U\n" +
+	"\x13ImportOrdersRequest\x12>\n" +
+	"\x06orders\x18\x01 \x03(\v2\x1c.notifier.AcceptOrderRequestB\b\xfaB\x05\x92\x01\x02\b\x01R\x06orders\"I\n" +
 	"\x11GetHistoryRequest\x124\n" +
 	"\n" +
 	"pagination\x18\x01 \x01(\v2\x14.notifier.PaginationR\n" +
@@ -1338,26 +1343,30 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\"E\n" +
 	"\rProcessResult\x12\x1c\n" +
 	"\tprocessed\x18\x01 \x03(\x04R\tprocessed\x12\x16\n" +
-	"\x06errors\x18\x02 \x03(\x04R\x06errors\"K\n" +
+	"\x06errors\x18\x02 \x03(\x04R\x06errors\"T\n" +
 	"\n" +
 	"OrdersList\x12'\n" +
-	"\x06orders\x18\x01 \x03(\v2\x0f.notifier.OrderR\x06orders\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"8\n" +
+	"\x06orders\x18\x01 \x03(\v2\x0f.notifier.OrderR\x06orders\x12\x1d\n" +
+	"\x05total\x18\x02 \x01(\x05B\a\xfaB\x04\x1a\x02(\x00R\x05total\"8\n" +
 	"\vReturnsList\x12)\n" +
 	"\areturns\x18\x01 \x03(\v2\x0f.notifier.OrderR\areturns\"D\n" +
 	"\x10OrderHistoryList\x120\n" +
-	"\ahistory\x18\x01 \x03(\v2\x16.notifier.OrderHistoryR\ahistory\"B\n" +
-	"\fImportResult\x12\x1a\n" +
-	"\bimported\x18\x01 \x01(\x05R\bimported\x12\x16\n" +
-	"\x06errors\x18\x02 \x03(\x04R\x06errors\"\xa0\x02\n" +
+	"\ahistory\x18\x01 \x03(\v2\x16.notifier.OrderHistoryR\ahistory\"K\n" +
+	"\fImportResult\x12#\n" +
+	"\bimported\x18\x01 \x01(\x05B\a\xfaB\x04\x1a\x02(\x00R\bimported\x12\x16\n" +
+	"\x06errors\x18\x02 \x03(\x04R\x06errors\"\xb8\x02\n" +
 	"\x05Order\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x04R\x06userId\x12-\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x15.notifier.OrderStatusR\x06status\x129\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x16\n" +
-	"\x06weight\x18\x05 \x01(\x02R\x06weight\x12\x1f\n" +
-	"\vtotal_price\x18\x06 \x01(\x02R\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\"\n" +
+	"\x06weight\x18\x05 \x01(\x02B\n" +
+	"\xfaB\a\n" +
+	"\x05%\x00\x00\x00\x00R\x06weight\x12+\n" +
+	"\vtotal_price\x18\x06 \x01(\x02B\n" +
+	"\xfaB\a\n" +
+	"\x05-\x00\x00\x00\x00R\n" +
 	"totalPrice\x124\n" +
 	"\apackage\x18\a \x01(\x0e2\x15.notifier.PackageTypeH\x00R\apackage\x88\x01\x01B\n" +
 	"\n" +

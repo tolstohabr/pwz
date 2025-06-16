@@ -369,9 +369,27 @@ func (m *AcceptOrderRequest) validate(all bool) error {
 		}
 	}
 
-	// no validation rules for Weight
+	if m.GetWeight() <= 0 {
+		err := AcceptOrderRequestValidationError{
+			field:  "Weight",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for Price
+	if m.GetPrice() < 0 {
+		err := AcceptOrderRequestValidationError{
+			field:  "Price",
+			reason: "value must be greater than or equal to 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if m.Package != nil {
 		// no validation rules for Package
@@ -830,9 +848,27 @@ func (m *Pagination) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Page
+	if m.GetPage() < 0 {
+		err := PaginationValidationError{
+			field:  "Page",
+			reason: "value must be greater than or equal to 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for CountOnPage
+	if val := m.GetCountOnPage(); val < 0 || val > 100 {
+		err := PaginationValidationError{
+			field:  "CountOnPage",
+			reason: "value must be inside range [0, 100]",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return PaginationMultiError(errors)
@@ -1063,6 +1099,17 @@ func (m *ImportOrdersRequest) validate(all bool) error {
 	}
 
 	var errors []error
+
+	if len(m.GetOrders()) < 1 {
+		err := ImportOrdersRequestValidationError{
+			field:  "Orders",
+			reason: "value must contain at least 1 item(s)",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	for idx, item := range m.GetOrders() {
 		_, _ = idx, item
@@ -1569,7 +1616,16 @@ func (m *OrdersList) validate(all bool) error {
 
 	}
 
-	// no validation rules for Total
+	if m.GetTotal() < 0 {
+		err := OrdersListValidationError{
+			field:  "Total",
+			reason: "value must be greater than or equal to 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return OrdersListMultiError(errors)
@@ -1937,7 +1993,16 @@ func (m *ImportResult) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Imported
+	if m.GetImported() < 0 {
+		err := ImportResultValidationError{
+			field:  "Imported",
+			reason: "value must be greater than or equal to 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return ImportResultMultiError(errors)
@@ -2072,9 +2137,27 @@ func (m *Order) validate(all bool) error {
 		}
 	}
 
-	// no validation rules for Weight
+	if m.GetWeight() <= 0 {
+		err := OrderValidationError{
+			field:  "Weight",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
-	// no validation rules for TotalPrice
+	if m.GetTotalPrice() < 0 {
+		err := OrderValidationError{
+			field:  "TotalPrice",
+			reason: "value must be greater than or equal to 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
 
 	if m.Package != nil {
 		// no validation rules for Package
