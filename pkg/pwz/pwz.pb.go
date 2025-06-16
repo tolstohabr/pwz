@@ -8,6 +8,7 @@ package pwz
 
 import (
 	_ "github.com/envoyproxy/protoc-gen-validate/validate"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -1278,7 +1279,7 @@ var File_pwz_pwz_proto protoreflect.FileDescriptor
 
 const file_pwz_pwz_proto_rawDesc = "" +
 	"\n" +
-	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\x83\x02\n" +
+	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\x1a\x1cgoogle/api/annotations.proto\"\x83\x02\n" +
 	"\x0eMessageRequest\x12\x1e\n" +
 	"\x04text\x18\x01 \x01(\tB\n" +
 	"\xfaB\ar\x05\x10\x01\x18\xc8\x01R\x04text\x128\n" +
@@ -1389,14 +1390,14 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\x14ORDER_STATUS_EXPECTS\x10\x01\x12\x19\n" +
 	"\x15ORDER_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15ORDER_STATUS_RETURNED\x10\x03\x12\x18\n" +
-	"\x14ORDER_STATUS_DELETED\x10\x042\xb3\x04\n" +
-	"\bNotifier\x12B\n" +
-	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\x12D\n" +
+	"\x14ORDER_STATUS_DELETED\x10\x042\xe5\x04\n" +
+	"\bNotifier\x12[\n" +
+	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12D\n" +
 	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\x12@\n" +
 	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\x12H\n" +
-	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\x12?\n" +
+	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\x12X\n" +
 	"\n" +
-	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\x12B\n" +
+	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12B\n" +
 	"\vListReturns\x12\x1c.notifier.ListReturnsRequest\x1a\x15.notifier.ReturnsList\x12E\n" +
 	"\n" +
 	"GetHistory\x12\x1b.notifier.GetHistoryRequest\x1a\x1a.notifier.OrderHistoryList\x12E\n" +

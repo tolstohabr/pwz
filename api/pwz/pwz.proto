@@ -5,6 +5,7 @@ package notifier;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "validate/validate.proto";
+import "google/api/annotations.proto";
 
 option go_package = "PWZ1.0/pkg/pwz";
 
@@ -33,7 +34,13 @@ enum Priority {
 
 service Notifier {
   //было для тестов
-  rpc SendMessage(MessageRequest) returns (MessageResponse);
+  rpc SendMessage(MessageRequest) returns (MessageResponse) {
+    option(google.api.http) = {
+      post: "/SendMessage",
+      body: "*",
+    };
+  };
+
   // Принять заказ от курьера
   rpc AcceptOrder(AcceptOrderRequest) returns (OrderResponse);
   // Вернуть заказ курьеру
@@ -41,8 +48,13 @@ service Notifier {
   // Выдать заказы или принять возврат клиента
   rpc ProcessOrders(ProcessOrdersRequest) returns (ProcessResult);
   // Получить список заказов
-  rpc ListOrders(ListOrdersRequest) returns (OrdersList);
-  // Получить список возвратов
+  rpc ListOrders(ListOrdersRequest) returns (OrdersList) {
+    option(google.api.http) = {
+      post: "/list_orders"
+      body: "*"
+    };
+  };
+// Получить список возвратов
   rpc ListReturns(ListReturnsRequest) returns (ReturnsList);
   // Получить историю изменения заказов
   rpc GetHistory(GetHistoryRequest) returns (OrderHistoryList);

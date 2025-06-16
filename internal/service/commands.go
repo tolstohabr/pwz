@@ -351,17 +351,15 @@ func appendToHistory(ctx context.Context, orderID uint64, status models.OrderSta
 	}
 }
 
-// GetHistoryRequest запрос на получение истории
 type GetHistoryRequest struct {
 	Pagination Pagination
 }
 
-// OrderHistoryList список записей истории
 type OrderHistoryList struct {
 	History []OrderHistory
 }
 
-// OrderHistory запись об изменении статуса заказа
+// OrderHistory
 type OrderHistory struct {
 	OrderID   uint64
 	Status    models.OrderStatus

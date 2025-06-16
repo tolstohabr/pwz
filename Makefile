@@ -12,6 +12,9 @@ bin-deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go install github.com/envoyproxy/protoc-gen-validate@latest
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
+
+
 
 generate:
 	cmd /C if not exist "$(OUT_PATH)" mkdir "$(OUT_PATH)"
@@ -25,6 +28,9 @@ generate:
 		--plugin protoc-gen-go-grpc="bin\protoc-gen-go-grpc.exe" \
 		--validate_out="lang=go,paths=source_relative:$(OUT_PATH)" \
 		--plugin protoc-gen-validate="bin\protoc-gen-validate.exe" \
+		--grpc-gateway_out=$(OUT_PATH) \
+		--grpc-gateway_opt=paths=source_relative \
+		--plugin protoc-gen-grpc-gateway="bin\protoc-gen-grpc-gateway.exe" \
 		api/pwz/pwz.proto
 	go mod tidy
 
@@ -41,6 +47,19 @@ vendor-proto/validate:
 	Move-Item -Path 'validate' -Destination '..\validate' -Force; \
 	cd ..; \
 	Remove-Item -Recurse -Force 'tmp'"
+
+vendor-proto/google-api:
+	@powershell -NoProfile -Command \
+	"$$ErrorActionPreference = 'Stop'; \
+	if (Test-Path 'vendor.protogen/googleapis') { Remove-Item -Recurse -Force 'vendor.protogen/googleapis' }; \
+	git clone -b master --single-branch -n --depth=1 --filter=tree:0 https://github.com/googleapis/googleapis vendor.protogen/googleapis; \
+	Set-Location vendor.protogen/googleapis; \
+	git sparse-checkout set --no-cone google/api; \
+	git checkout; \
+	Set-Location ../..; \
+	if (-not (Test-Path 'vendor.protogen/google')) { New-Item -ItemType Directory -Path 'vendor.protogen/google' | Out-Null }; \
+	Move-Item -Path 'vendor.protogen/googleapis/google/api' -Destination 'vendor.protogen/google' -Force; \
+	Remove-Item -Recurse -Force 'vendor.protogen/googleapis'"
 
 run:
 	go run ./cmd/main.go

@@ -21,7 +21,6 @@ func (i *Implementation) GetHistory(ctx context.Context, req *desc.GetHistoryReq
 
 	var pbHistoryList []*desc.OrderHistory
 	for _, h := range historyList.History {
-		// Правильное преобразование статусов
 		var status desc.OrderStatus
 		switch h.Status {
 		case models.StatusExpects:
