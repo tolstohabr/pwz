@@ -6,14 +6,15 @@ PROTOC_URL := https://github.com/protocolbuffers/protobuf/releases/download/v$(P
 PROTOC := $(LOCAL_BIN)/bin/protoc.exe
 
 bin-deps:
+	cmd /C if not exist "$(LOCAL_BIN)" mkdir "$(LOCAL_BIN)"
 	curl -LO $(PROTOC_URL)
 	powershell -Command "Expand-Archive -Path '$(PROTOC_FILE)' -DestinationPath '$(LOCAL_BIN)' -Force"
 	del $(PROTOC_FILE)
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-	go install github.com/envoyproxy/protoc-gen-validate@latest
-	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
-	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+	powershell -Command "$$env:GOBIN = Resolve-Path '$(LOCAL_BIN)'; go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
+	powershell -Command "$$env:GOBIN = Resolve-Path '$(LOCAL_BIN)'; go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"
+	powershell -Command "$$env:GOBIN = Resolve-Path '$(LOCAL_BIN)'; go install github.com/envoyproxy/protoc-gen-validate@latest"
+	powershell -Command "$$env:GOBIN = Resolve-Path '$(LOCAL_BIN)'; go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest"
+	powershell -Command "$$env:GOBIN = Resolve-Path '$(LOCAL_BIN)'; go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest"
 
 
 
