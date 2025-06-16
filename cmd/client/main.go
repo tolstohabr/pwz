@@ -20,13 +20,12 @@ const (
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
-// TODO:
 type ImportJSON struct {
 	Orders []struct {
 		OrderID   uint64  `json:"order_id"`
 		UserID    uint64  `json:"user_id"`
-		ExpiresAt string  `json:"expires_at"` // формат: RFC3339
-		Package   string  `json:"package"`    // опционально
+		ExpiresAt string  `json:"expires_at"`
+		Package   string  `json:"package"` // опционально
 		Weight    float32 `json:"weight"`
 		Price     float32 `json:"price"`
 	} `json:"orders"`
