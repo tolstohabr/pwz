@@ -6,6 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "validate/validate.proto";
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "PWZ1.0/pkg/pwz";
 
@@ -31,6 +32,18 @@ enum Priority {
   PRIORITY_MAX = 5;
 }
 
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Пункт выдачи заказов";
+    version: "1.0.0";
+    description: "HTTP и gRPC";
+  };
+  host: "localhost:50052";
+  schemes: HTTP;
+  consumes: "application/json";
+  produces: "application/json";
+};
+
 
 service Notifier {
   //было для тестов
@@ -38,6 +51,10 @@ service Notifier {
     option(google.api.http) = {
       post: "/SendMessage",
       body: "*",
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "";
+      description: "Описание...";
     };
   };
 
@@ -47,12 +64,20 @@ service Notifier {
       post: "/accept_order"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Принять заказ от курьера";
+      description: "Описание...";
+    };
   }
   // Вернуть заказ курьеру
   rpc ReturnOrder(OrderIdRequest) returns (OrderResponse) {
     option (google.api.http) = {
       post: "/return_order"
       body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Вернуть заказ курьеру";
+      description: "Описание...";
     };
   }
   // Выдать заказы или принять возврат клиента
@@ -61,12 +86,20 @@ service Notifier {
       post: "/process_orders"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Выдать заказы или принять возврат клиента";
+      description: "Описание...";
+    };
   }
   // Получить список заказов
   rpc ListOrders(ListOrdersRequest) returns (OrdersList) {
     option(google.api.http) = {
       post: "/list_orders"
       body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить список заказов";
+      description: "Описание...";
     };
   };
 // Получить список возвратов
@@ -75,6 +108,10 @@ service Notifier {
       post: "/list_returns"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить список возвратов";
+      description: "Описание...";
+    };
   }
   // Получить историю изменения заказов
   rpc GetHistory(GetHistoryRequest) returns (OrderHistoryList) {
@@ -82,12 +119,20 @@ service Notifier {
       post: "/get_history"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить историю изменения заказов";
+      description: "Описание...";
+    };
   }
   // Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
   rpc ImportOrders(ImportOrdersRequest) returns (ImportResult) {
     option (google.api.http) = {
       post: "/import_orders"
       body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)";
+      description: "Описание...";
     };
   }
 }

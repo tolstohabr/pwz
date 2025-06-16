@@ -493,7 +493,7 @@ func handleImportOrders(ctx context.Context, orderService service.OrderService, 
 	for _, o := range orders {
 		err := orderService.SaveOrder(o)
 		if err != nil {
-			fmt.Printf("ERROR: IMPORT_FAILED: не удалось импортировать заказ %s: %v\n", o.ID, err)
+			fmt.Printf("ERROR: IMPORT_FAILED: не удалось импортировать заказ %d: %v\n", o.ID, err)
 			continue
 		}
 		imported++

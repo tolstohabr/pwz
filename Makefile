@@ -13,6 +13,7 @@ bin-deps:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go install github.com/envoyproxy/protoc-gen-validate@latest
 	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
 
 
@@ -31,6 +32,8 @@ generate:
 		--grpc-gateway_out=$(OUT_PATH) \
 		--grpc-gateway_opt=paths=source_relative \
 		--plugin protoc-gen-grpc-gateway="bin\protoc-gen-grpc-gateway.exe" \
+		--openapiv2_out=$(OUT_PATH) \
+        --plugin=protoc-gen-openapiv2="bin\protoc-gen-openapiv2.exe" \
 		api/pwz/pwz.proto
 	go mod tidy
 
@@ -60,6 +63,20 @@ vendor-proto/google-api:
 	if (-not (Test-Path 'vendor.protogen/google')) { New-Item -ItemType Directory -Path 'vendor.protogen/google' | Out-Null }; \
 	Move-Item -Path 'vendor.protogen/googleapis/google/api' -Destination 'vendor.protogen/google' -Force; \
 	Remove-Item -Recurse -Force 'vendor.protogen/googleapis'"
+
+vendor-proto/openapiv2-options:
+	@powershell -NoProfile -Command \
+	"$$ErrorActionPreference = 'Stop'; \
+	if (Test-Path 'vendor.protogen/tmp') { Remove-Item -Recurse -Force 'vendor.protogen/tmp' }; \
+	if (Test-Path 'vendor.protogen/protoc-gen-openapiv2') { Remove-Item -Recurse -Force 'vendor.protogen/protoc-gen-openapiv2' }; \
+	git clone -b main --single-branch -n --depth=1 --filter=tree:0 https://github.com/grpc-ecosystem/grpc-gateway vendor.protogen/tmp; \
+	Set-Location vendor.protogen/tmp; \
+	git sparse-checkout set --no-cone protoc-gen-openapiv2/options; \
+	git checkout; \
+	New-Item -ItemType Directory -Path '../protoc-gen-openapiv2' -Force | Out-Null; \
+	Move-Item -Path 'protoc-gen-openapiv2/options' -Destination '../protoc-gen-openapiv2' -Force; \
+	Set-Location ../..; \
+	Remove-Item -Recurse -Force 'vendor.protogen/tmp'"
 
 run:
 	go run ./cmd/main.go

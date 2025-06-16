@@ -8,6 +8,7 @@ package pwz
 
 import (
 	_ "github.com/envoyproxy/protoc-gen-validate/validate"
+	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1279,7 +1280,7 @@ var File_pwz_pwz_proto protoreflect.FileDescriptor
 
 const file_pwz_pwz_proto_rawDesc = "" +
 	"\n" +
-	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\x1a\x1cgoogle/api/annotations.proto\"\x83\x02\n" +
+	"\rpwz/pwz.proto\x12\bnotifier\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\x1a\x1cgoogle/api/annotations.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\x83\x02\n" +
 	"\x0eMessageRequest\x12\x1e\n" +
 	"\x04text\x18\x01 \x01(\tB\n" +
 	"\xfaB\ar\x05\x10\x01\x18\xc8\x01R\x04text\x128\n" +
@@ -1390,18 +1391,19 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\x14ORDER_STATUS_EXPECTS\x10\x01\x12\x19\n" +
 	"\x15ORDER_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15ORDER_STATUS_RETURNED\x10\x03\x12\x18\n" +
-	"\x14ORDER_STATUS_DELETED\x10\x042\x83\x06\n" +
-	"\bNotifier\x12[\n" +
-	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12^\n" +
-	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/accept_order\x12Z\n" +
-	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/return_order\x12d\n" +
-	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/process_orders\x12X\n" +
+	"\x14ORDER_STATUS_DELETED\x10\x042\x94\v\n" +
+	"\bNotifier\x12s\n" +
+	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"/\x92A\x15\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12\xa5\x01\n" +
+	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\"_\x92AD\x12-Принять заказ от курьера\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/accept_order\x12\x9c\x01\n" +
+	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\"Z\x92A?\x12(Вернуть заказ курьеру\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/return_order\x12\xcc\x01\n" +
+	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\"\x81\x01\x92Ad\x12MВыдать заказы или принять возврат клиента\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/process_orders\x12\x9e\x01\n" +
 	"\n" +
-	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12\\\n" +
-	"\vListReturns\x12\x1c.notifier.ListReturnsRequest\x1a\x15.notifier.ReturnsList\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/list_returns\x12^\n" +
+	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"]\x92AC\x12,Получить список заказов\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12\xa6\x01\n" +
+	"\vListReturns\x12\x1c.notifier.ListReturnsRequest\x1a\x15.notifier.ReturnsList\"b\x92AG\x120Получить список возвратов\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/list_returns\x12\xb9\x01\n" +
 	"\n" +
-	"GetHistory\x12\x1b.notifier.GetHistoryRequest\x1a\x1a.notifier.OrderHistoryList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/get_history\x12`\n" +
-	"\fImportOrders\x12\x1d.notifier.ImportOrdersRequest\x1a\x16.notifier.ImportResult\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/import_ordersB\x10Z\x0ePWZ1.0/pkg/pwzb\x06proto3"
+	"GetHistory\x12\x1b.notifier.GetHistoryRequest\x1a\x1a.notifier.OrderHistoryList\"r\x92AX\x12AПолучить историю изменения заказов\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/get_history\x12\xf6\x01\n" +
+	"\fImportOrders\x12\x1d.notifier.ImportOrdersRequest\x1a\x16.notifier.ImportResult\"\xae\x01\x92A\x91\x01\x12zИмпорт заказов (если эта ручка делалась ранее в рамках доп заданий)\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/import_ordersB\x8a\x01\x92Aw\x12=\n" +
+	"&Пункт выдачи заказов\x12\fHTTP и gRPC2\x051.0.0\x1a\x0flocalhost:50052*\x01\x012\x10application/json:\x10application/jsonZ\x0ePWZ1.0/pkg/pwzb\x06proto3"
 
 var (
 	file_pwz_pwz_proto_rawDescOnce sync.Once

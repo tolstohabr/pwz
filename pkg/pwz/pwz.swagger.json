@@ -1,0 +1,660 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Пункт выдачи заказов",
+    "description": "HTTP и gRPC",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "Notifier"
+    }
+  ],
+  "host": "localhost:50052",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/SendMessage": {
+      "post": {
+        "summary": "было для тестов",
+        "description": "Описание...",
+        "operationId": "Notifier_SendMessage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierMessageResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierMessageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/accept_order": {
+      "post": {
+        "summary": "Принять заказ от курьера",
+        "description": "Описание...",
+        "operationId": "Notifier_AcceptOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierAcceptOrderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/get_history": {
+      "post": {
+        "summary": "Получить историю изменения заказов",
+        "description": "Описание...",
+        "operationId": "Notifier_GetHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrderHistoryList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierGetHistoryRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/import_orders": {
+      "post": {
+        "summary": "Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)",
+        "description": "Описание...",
+        "operationId": "Notifier_ImportOrders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierImportResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierImportOrdersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/list_orders": {
+      "post": {
+        "summary": "Получить список заказов",
+        "description": "Описание...",
+        "operationId": "Notifier_ListOrders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrdersList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierListOrdersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/list_returns": {
+      "post": {
+        "summary": "Получить список возвратов",
+        "description": "Описание...",
+        "operationId": "Notifier_ListReturns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierReturnsList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierListReturnsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/process_orders": {
+      "post": {
+        "summary": "Выдать заказы или принять возврат клиента",
+        "description": "Описание...",
+        "operationId": "Notifier_ProcessOrders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierProcessResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierProcessOrdersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
+    "/return_order": {
+      "post": {
+        "summary": "Вернуть заказ курьеру",
+        "description": "Описание...",
+        "operationId": "Notifier_ReturnOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/notifierOrderIdRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "notifierAcceptOrderRequest": {
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "package": {
+          "$ref": "#/definitions/notifierPackageType"
+        },
+        "weight": {
+          "type": "number",
+          "format": "float"
+        },
+        "price": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    },
+    "notifierActionType": {
+      "type": "string",
+      "enum": [
+        "ACTION_TYPE_UNSPECIFIED",
+        "ACTION_TYPE_ISSUE",
+        "ACTION_TYPE_RETURN"
+      ],
+      "default": "ACTION_TYPE_UNSPECIFIED",
+      "title": "- ACTION_TYPE_UNSPECIFIED: не указан\n - ACTION_TYPE_ISSUE: выдать заказы\n - ACTION_TYPE_RETURN: принять возврат клиента"
+    },
+    "notifierGetHistoryRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/notifierPagination"
+        }
+      }
+    },
+    "notifierImportOrdersRequest": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/notifierAcceptOrderRequest"
+          }
+        }
+      }
+    },
+    "notifierImportResult": {
+      "type": "object",
+      "properties": {
+        "imported": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "notifierListOrdersRequest": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "inPvz": {
+          "type": "boolean",
+          "title": "если true, то будут заказы для выдачи клиенту, если false, то все"
+        },
+        "lastN": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "pagination": {
+          "$ref": "#/definitions/notifierPagination"
+        }
+      }
+    },
+    "notifierListReturnsRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/notifierPagination"
+        }
+      }
+    },
+    "notifierMessageRequest": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "#/definitions/notifierPriority"
+        },
+        "delay": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "comment": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "notifierMessageResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "notifierOrder": {
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "status": {
+          "$ref": "#/definitions/notifierOrderStatus"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "weight": {
+          "type": "number",
+          "format": "float"
+        },
+        "totalPrice": {
+          "type": "number",
+          "format": "float"
+        },
+        "package": {
+          "$ref": "#/definitions/notifierPackageType"
+        }
+      }
+    },
+    "notifierOrderHistory": {
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "status": {
+          "$ref": "#/definitions/notifierOrderStatus"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "notifierOrderHistoryList": {
+      "type": "object",
+      "properties": {
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/notifierOrderHistory"
+          }
+        }
+      }
+    },
+    "notifierOrderIdRequest": {
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "notifierOrderResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/notifierOrderStatus"
+        },
+        "orderId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "notifierOrderStatus": {
+      "type": "string",
+      "enum": [
+        "ORDER_STATUS_UNSPECIFIED",
+        "ORDER_STATUS_EXPECTS",
+        "ORDER_STATUS_ACCEPTED",
+        "ORDER_STATUS_RETURNED",
+        "ORDER_STATUS_DELETED"
+      ],
+      "default": "ORDER_STATUS_UNSPECIFIED",
+      "title": "- ORDER_STATUS_UNSPECIFIED: не указан\n - ORDER_STATUS_EXPECTS: получен, ожидает выдачи клиенту\n - ORDER_STATUS_ACCEPTED: выдан клиенту\n - ORDER_STATUS_RETURNED: возвращен клиентом в пвз\n - ORDER_STATUS_DELETED: возвращен курьеру из пвз"
+    },
+    "notifierOrdersList": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/notifierOrder"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "notifierPackageType": {
+      "type": "string",
+      "enum": [
+        "PACKAGE_TYPE_UNSPECIFIED",
+        "PACKAGE_TYPE_BAG",
+        "PACKAGE_TYPE_BOX",
+        "PACKAGE_TYPE_TAPE",
+        "PACKAGE_TYPE_BAG_TAPE",
+        "PACKAGE_TYPE_BOX_TAPE"
+      ],
+      "default": "PACKAGE_TYPE_UNSPECIFIED",
+      "title": "- PACKAGE_TYPE_UNSPECIFIED: не указан\n - PACKAGE_TYPE_BAG: пакет\n - PACKAGE_TYPE_BOX: коробка\n - PACKAGE_TYPE_TAPE: пленка\n - PACKAGE_TYPE_BAG_TAPE: пленка + пакет\n - PACKAGE_TYPE_BOX_TAPE: пленка + коробка"
+    },
+    "notifierPagination": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "countOnPage": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "notifierPriority": {
+      "type": "string",
+      "enum": [
+        "PRIORITY_UNKNOWN",
+        "PRIORITY_MIN",
+        "PRIORITY_LOW",
+        "PRIORITY_DEFAULT",
+        "PRIORITY_HIGH",
+        "PRIORITY_MAX"
+      ],
+      "default": "PRIORITY_UNKNOWN"
+    },
+    "notifierProcessOrdersRequest": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "action": {
+          "$ref": "#/definitions/notifierActionType"
+        },
+        "orderIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "notifierProcessResult": {
+      "type": "object",
+      "properties": {
+        "processed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "notifierReturnsList": {
+      "type": "object",
+      "properties": {
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/notifierOrder"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
