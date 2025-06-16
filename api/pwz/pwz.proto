@@ -42,11 +42,26 @@ service Notifier {
   };
 
   // Принять заказ от курьера
-  rpc AcceptOrder(AcceptOrderRequest) returns (OrderResponse);
+  rpc AcceptOrder(AcceptOrderRequest) returns (OrderResponse) {
+    option (google.api.http) = {
+      post: "/accept_order"
+      body: "*"
+    };
+  }
   // Вернуть заказ курьеру
-  rpc ReturnOrder(OrderIdRequest) returns (OrderResponse);
+  rpc ReturnOrder(OrderIdRequest) returns (OrderResponse) {
+    option (google.api.http) = {
+      post: "/return_order"
+      body: "*"
+    };
+  }
   // Выдать заказы или принять возврат клиента
-  rpc ProcessOrders(ProcessOrdersRequest) returns (ProcessResult);
+  rpc ProcessOrders(ProcessOrdersRequest) returns (ProcessResult) {
+    option (google.api.http) = {
+      post: "/process_orders"
+      body: "*"
+    };
+  }
   // Получить список заказов
   rpc ListOrders(ListOrdersRequest) returns (OrdersList) {
     option(google.api.http) = {
@@ -55,11 +70,26 @@ service Notifier {
     };
   };
 // Получить список возвратов
-  rpc ListReturns(ListReturnsRequest) returns (ReturnsList);
+  rpc ListReturns(ListReturnsRequest) returns (ReturnsList) {
+    option (google.api.http) = {
+      post: "/list_returns"
+      body: "*"
+    };
+  }
   // Получить историю изменения заказов
-  rpc GetHistory(GetHistoryRequest) returns (OrderHistoryList);
+  rpc GetHistory(GetHistoryRequest) returns (OrderHistoryList) {
+    option (google.api.http) = {
+      post: "/get_history"
+      body: "*"
+    };
+  }
   // Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
-  rpc ImportOrders(ImportOrdersRequest) returns (ImportResult);
+  rpc ImportOrders(ImportOrdersRequest) returns (ImportResult) {
+    option (google.api.http) = {
+      post: "/import_orders"
+      body: "*"
+    };
+  }
 }
 
 message AcceptOrderRequest {

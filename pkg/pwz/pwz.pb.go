@@ -1390,18 +1390,18 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\x14ORDER_STATUS_EXPECTS\x10\x01\x12\x19\n" +
 	"\x15ORDER_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15ORDER_STATUS_RETURNED\x10\x03\x12\x18\n" +
-	"\x14ORDER_STATUS_DELETED\x10\x042\xe5\x04\n" +
+	"\x14ORDER_STATUS_DELETED\x10\x042\x83\x06\n" +
 	"\bNotifier\x12[\n" +
-	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12D\n" +
-	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\x12@\n" +
-	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\x12H\n" +
-	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\x12X\n" +
+	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12^\n" +
+	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/accept_order\x12Z\n" +
+	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/return_order\x12d\n" +
+	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/process_orders\x12X\n" +
 	"\n" +
-	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12B\n" +
-	"\vListReturns\x12\x1c.notifier.ListReturnsRequest\x1a\x15.notifier.ReturnsList\x12E\n" +
+	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12\\\n" +
+	"\vListReturns\x12\x1c.notifier.ListReturnsRequest\x1a\x15.notifier.ReturnsList\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/list_returns\x12^\n" +
 	"\n" +
-	"GetHistory\x12\x1b.notifier.GetHistoryRequest\x1a\x1a.notifier.OrderHistoryList\x12E\n" +
-	"\fImportOrders\x12\x1d.notifier.ImportOrdersRequest\x1a\x16.notifier.ImportResultB\x10Z\x0ePWZ1.0/pkg/pwzb\x06proto3"
+	"GetHistory\x12\x1b.notifier.GetHistoryRequest\x1a\x1a.notifier.OrderHistoryList\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/get_history\x12`\n" +
+	"\fImportOrders\x12\x1d.notifier.ImportOrdersRequest\x1a\x16.notifier.ImportResult\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/import_ordersB\x10Z\x0ePWZ1.0/pkg/pwzb\x06proto3"
 
 var (
 	file_pwz_pwz_proto_rawDescOnce sync.Once
