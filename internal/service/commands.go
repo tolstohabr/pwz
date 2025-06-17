@@ -167,9 +167,14 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 			continue
 		}
 
+		if time.Now().After(order.ExpiresAt) {
+			result.Errors = append(result.Errors, id)
+			continue
+		}
+
 		switch actionType {
 		case models.ActionTypeIssue:
-			if time.Now().After(order.ExpiresAt) {
+			if order.Status != models.StatusExpects {
 				result.Errors = append(result.Errors, id)
 				continue
 			}
@@ -178,7 +183,7 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 			appendToHistory(ctx, order.ID, models.StatusAccepted)
 
 		case models.ActionTypeReturn:
-			if time.Now().After(order.ExpiresAt) {
+			if order.Status != models.StatusAccepted {
 				result.Errors = append(result.Errors, id)
 				continue
 			}
