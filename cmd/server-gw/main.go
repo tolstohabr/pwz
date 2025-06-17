@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"PWZ1.0/internal/mw"
 	desc "PWZ1.0/pkg/pwz"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
@@ -18,7 +19,9 @@ const (
 
 func main() {
 	ctx := context.Background()
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(
+		runtime.WithErrorHandler(mw.CustomErrorHandler),
+	)
 	err := desc.RegisterNotifierHandlerFromEndpoint(ctx, mux, grpcAddress, []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	})
