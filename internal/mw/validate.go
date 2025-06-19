@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func ValidateInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func ValidateInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	if reqV, ok := req.(interface{ ValidateAll() error }); ok {
 		if err := reqV.ValidateAll(); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())

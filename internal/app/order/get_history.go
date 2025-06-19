@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (i *Implementation) GetHistory(ctx context.Context, req *desc.GetHistoryRequest) (*desc.OrderHistoryList, error) {
+func (i *Implementation) GetHistory(_ context.Context, req *desc.GetHistoryRequest) (*desc.OrderHistoryList, error) {
 	serviceReq := service.GetHistoryRequest{
 		Pagination: service.Pagination{
 			Page:        req.GetPagination().GetPage(),

@@ -48,37 +48,9 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	/*if err := acceptOrder(ctx, client, 116, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
-		log.Fatalf("failed to accept order: %v", err)
-	}*/
-
 	if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
 		log.Fatalf("failed to list orders: %v", err)
 	}
-
-	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_ISSUE, []uint64{101}); err != nil {
-		log.Fatalf("failed to process orders: %v", err)
-	}*/
-
-	/*if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{101}); err != nil {
-		log.Fatalf("failed to process orders: %v", err)
-	}*/
-
-	/*if err := returnOrder(ctx, client, 102); err != nil {
-		log.Fatalf("failed to return order: %v", err)
-	}*/
-
-	/*if err := listReturns(ctx, client, 0, 10); err != nil {
-		log.Fatalf("failed to list returns: %v", err)
-	}*/
-
-	/*if err := getHistory(ctx, client, 0, 10); err != nil {
-		log.Fatalf("failed to get history: %v", err)
-	}*/
-
-	/*if err := importOrdersFromFile(ctx, client, "orders2.json"); err != nil {
-		log.Fatalf("failed to import orders: %v", err)
-	}*/
 }
 
 func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64, userID uint64, expiresAt time.Time, pkg *desc.PackageType, weight float32, price float32) error {
