@@ -3,46 +3,48 @@ package order
 import (
 	"context"
 
-	"PWZ1.0/internal/models"
-	"PWZ1.0/internal/service"
 	desc "PWZ1.0/pkg/pwz"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"PWZ1.0/internal/models"
 )
 
-func (i *Implementation) GetHistory(_ context.Context, req *desc.GetHistoryRequest) (*desc.OrderHistoryList, error) {
-	serviceReq := service.GetHistoryRequest{
-		Pagination: service.Pagination{
-			Page:        req.GetPagination().GetPage(),
-			CountOnPage: req.GetPagination().GetCountOnPage(),
-		},
+func convertOrderStatus(s models.OrderStatus) desc.OrderStatus {
+	switch s {
+	case models.StatusExpects:
+		return desc.OrderStatus_ORDER_STATUS_EXPECTS
+	case models.StatusAccepted:
+		return desc.OrderStatus_ORDER_STATUS_ACCEPTED
+	case models.StatusReturned:
+		return desc.OrderStatus_ORDER_STATUS_RETURNED
+	case models.StatusDeleted:
+		return desc.OrderStatus_ORDER_STATUS_DELETED
+	default:
+		return desc.OrderStatus_ORDER_STATUS_UNSPECIFIED
+	}
+}
+
+func (i *Implementation) GetHistory(ctx context.Context, req *desc.GetHistoryRequest) (*desc.OrderHistoryList, error) {
+	page := uint32(0)
+	count := uint32(0)
+	if req.GetPagination() != nil {
+		page = req.GetPagination().GetPage()
+		count = req.GetPagination().GetCountOnPage()
 	}
 
-	historyList := i.orderService.GetHistory(serviceReq)
+	history, err := i.orderService.GetHistory(ctx, page, count)
+	if err != nil {
+		return nil, err
+	}
 
-	var pbHistoryList []*desc.OrderHistory
-	for _, h := range historyList.History {
-		var status desc.OrderStatus
-		switch h.Status {
-		case models.StatusExpects:
-			status = desc.OrderStatus_ORDER_STATUS_EXPECTS
-		case models.StatusAccepted:
-			status = desc.OrderStatus_ORDER_STATUS_ACCEPTED
-		case models.StatusReturned:
-			status = desc.OrderStatus_ORDER_STATUS_RETURNED
-		case models.StatusDeleted:
-			status = desc.OrderStatus_ORDER_STATUS_DELETED
-		default:
-			status = desc.OrderStatus_ORDER_STATUS_UNSPECIFIED
-		}
-
-		pbHistoryList = append(pbHistoryList, &desc.OrderHistory{
-			OrderId:   h.OrderID,
-			Status:    status,
-			CreatedAt: timestamppb.New(h.CreatedAt),
+	resp := &desc.OrderHistoryList{}
+	for _, hItem := range history {
+		resp.History = append(resp.History, &desc.OrderHistory{
+			OrderId:   hItem.OrderID,
+			Status:    convertOrderStatus(hItem.Status),
+			CreatedAt: timestamppb.New(hItem.CreatedAt),
 		})
 	}
 
-	return &desc.OrderHistoryList{
-		History: pbHistoryList,
-	}, nil
+	return resp, nil
 }

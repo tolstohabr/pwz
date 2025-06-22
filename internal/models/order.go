@@ -35,6 +35,13 @@ const (
 	ActionTypeReturn
 )
 
+type OrderHistory struct {
+	ID        uint64      `json:"id"`
+	OrderID   uint64      `json:"order_id"`
+	Status    OrderStatus `json:"status"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
 func (a ActionType) String() string {
 	switch a {
 	case ActionTypeIssue:

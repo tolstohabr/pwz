@@ -42,6 +42,15 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		return err
 	}
 
+	const historyQuery = `
+		INSERT INTO order_history (order_id, status)
+		VALUES ($1, $2)
+	`
+	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -144,6 +153,16 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 	if rows == 0 {
 		return domainErrors.ErrOrderNotFound
 	}
+
+	const historyQuery = `
+		INSERT INTO order_history (order_id, status)
+		VALUES ($1, $2)
+	`
+	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -153,4 +172,45 @@ func isUniqueViolation(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {
+	if count == 0 {
+		count = 50
+	}
+	offset := page * count
+
+	const query = `
+		SELECT id, order_id, status, created_at
+		FROM order_history
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := ps.db.QueryContext(ctx, query, count, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.OrderHistory
+	for rows.Next() {
+		var h models.OrderHistory
+		err := rows.Scan(
+			&h.ID,
+			&h.OrderID,
+			&h.Status,
+			&h.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, h)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return history, nil
 }

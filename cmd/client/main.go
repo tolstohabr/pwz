@@ -48,8 +48,8 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
-		log.Fatalf("failed to list orders: %v", err)
+	if err := getHistory(ctx, client, 0, 10); err != nil {
+		log.Fatalf("failed to get history: %v", err)
 	}
 }
 
@@ -200,13 +200,11 @@ func listReturns(ctx context.Context, client desc.NotifierClient, page uint32, l
 	return nil
 }
 
-func getHistory(ctx context.Context, client desc.NotifierClient, page uint32, limit uint32) error {
-	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
-
+func getHistory(ctx context.Context, client desc.NotifierClient, page, count uint32) error {
 	req := &desc.GetHistoryRequest{
 		Pagination: &desc.Pagination{
 			Page:        page,
-			CountOnPage: limit,
+			CountOnPage: count,
 		},
 	}
 
@@ -215,14 +213,12 @@ func getHistory(ctx context.Context, client desc.NotifierClient, page uint32, li
 		return fmt.Errorf("GetHistory failed: %w", err)
 	}
 
-	for _, h := range resp.History {
-		changedAt := h.GetCreatedAt().AsTime().Format(DateTimeFormat)
-		fmt.Printf("%d %s %s\n",
-			h.GetOrderId(),
-			h.GetStatus().String(),
-			changedAt)
+	fmt.Println("Order History:")
+	for _, h := range resp.GetHistory() {
+		createdAt := h.GetCreatedAt().AsTime().Format(DateTimeFormat)
+		fmt.Printf("OrderID: %d, Status: %s, CreatedAt: %s\n",
+			h.GetOrderId(), h.GetStatus().String(), createdAt)
 	}
-	fmt.Printf("Всего записей: %d\n", len(resp.History))
 
 	return nil
 }

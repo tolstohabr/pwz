@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"os"
@@ -40,7 +39,7 @@ type OrderService interface {
 	ListReturns(req ListReturnsRequest) ReturnsList
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
-	GetHistory(req GetHistoryRequest) OrderHistoryList
+	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
 }
 
 type ProcessResult struct {
@@ -356,52 +355,6 @@ type OrderHistory struct {
 	CreatedAt time.Time
 }
 
-func (s *orderService) GetHistory(req GetHistoryRequest) OrderHistoryList {
-	file, err := os.Open("order_history.json")
-	if err != nil {
-		return OrderHistoryList{}
-	}
-	defer file.Close()
-
-	var history []OrderHistory
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		var record struct {
-			OrderID   uint64 `json:"order_id"`
-			Status    string `json:"status"`
-			Timestamp string `json:"created_at"`
-		}
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			continue
-		}
-
-		createdAt, err := time.Parse(time.RFC3339, record.Timestamp)
-		if err != nil {
-			continue
-		}
-
-		history = append(history, OrderHistory{
-			OrderID:   record.OrderID,
-			Status:    models.OrderStatus(record.Status),
-			CreatedAt: createdAt,
-		})
-	}
-
-	page := int(req.Pagination.Page)
-	limit := int(req.Pagination.CountOnPage)
-
-	if limit > 0 {
-		start := page * limit
-		end := start + limit
-		if start >= len(history) {
-			return OrderHistoryList{History: []OrderHistory{}}
-		}
-		if end > len(history) {
-			end = len(history)
-		}
-		return OrderHistoryList{History: history[start:end]}
-	}
-
-	return OrderHistoryList{History: history}
+func (s *orderService) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {
+	return s.storage.GetHistory(ctx, page, count)
 }

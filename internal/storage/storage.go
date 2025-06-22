@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
@@ -14,6 +15,7 @@ type Storage interface {
 	DeleteOrder(id uint64) error
 	ListOrders() ([]models.Order, error)
 	UpdateOrder(order models.Order) error
+	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
 }
 
 type FileStorage struct {
