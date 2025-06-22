@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"PWZ1.0/internal/app/order"
@@ -31,7 +32,7 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	dsn := getPostgresDSN()
+	dsn := os.Getenv("DB_DSN")
 	fmt.Println("DSN:", dsn)
 
 	if dsn == "" {
