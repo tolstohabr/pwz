@@ -1,4 +1,7 @@
 homework.exe
+/bin
 /vendor.protogen
 /.idea
 /trash
+
+.env
