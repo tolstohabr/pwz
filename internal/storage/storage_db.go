@@ -2,14 +2,14 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Storage interface {
@@ -22,10 +22,10 @@ type Storage interface {
 }
 
 type PgStorage struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewPgStorage(db *sql.DB) *PgStorage {
+func NewPgStorage(db *pgxpool.Pool) *PgStorage {
 	return &PgStorage{db: db}
 }
 
@@ -34,7 +34,7 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		INSERT INTO orders (id, user_id, status, expires_at, weight, total_price, package_type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
-	_, err := ps.db.ExecContext(context.Background(), query,
+	_, err := ps.db.Exec(context.Background(), query,
 		order.ID,
 		order.UserID,
 		order.Status,
@@ -43,7 +43,6 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		order.Price,
 		order.PackageType,
 	)
-
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domainErrors.ErrDuplicateOrder
@@ -55,7 +54,7 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		INSERT INTO order_history (order_id, status)
 		VALUES ($1, $2)
 	`
-	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
+	_, err = ps.db.Exec(context.Background(), historyQuery, order.ID, order.Status)
 	return err
 }
 
@@ -66,7 +65,7 @@ func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
 	`
 
 	var order models.Order
-	err := ps.db.QueryRowContext(context.Background(), query, id).Scan(
+	err := ps.db.QueryRow(context.Background(), query, id).Scan(
 		&order.ID,
 		&order.UserID,
 		&order.Status,
@@ -75,7 +74,7 @@ func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
 		&order.Price,
 		&order.PackageType,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Order{}, domainErrors.ErrOrderNotFound
 	}
 	return order, err
@@ -83,16 +82,12 @@ func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
 
 func (ps *PgStorage) DeleteOrder(id uint64) error {
 	const query = `DELETE FROM orders WHERE id = $1`
-	res, err := ps.db.ExecContext(context.Background(), query, id)
+	cmdTag, err := ps.db.Exec(context.Background(), query, id)
 	if err != nil {
 		return err
 	}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
+	if cmdTag.RowsAffected() == 0 {
 		return domainErrors.ErrOrderNotFound
 	}
 	return nil
@@ -104,7 +99,7 @@ func (ps *PgStorage) ListOrders() ([]models.Order, error) {
 		FROM orders
 	`
 
-	rows, err := ps.db.QueryContext(context.Background(), query)
+	rows, err := ps.db.Query(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +133,7 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 			total_price = $6, package_type = $7
 		WHERE id = $1
 	`
-	res, err := ps.db.ExecContext(context.Background(), query,
+	cmdTag, err := ps.db.Exec(context.Background(), query,
 		order.ID,
 		order.UserID,
 		order.Status,
@@ -151,11 +146,7 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 		return err
 	}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
+	if cmdTag.RowsAffected() == 0 {
 		return domainErrors.ErrOrderNotFound
 	}
 
@@ -163,7 +154,7 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 		INSERT INTO order_history (order_id, status)
 		VALUES ($1, $2)
 	`
-	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
+	_, err = ps.db.Exec(context.Background(), historyQuery, order.ID, order.Status)
 	return err
 }
 
@@ -180,7 +171,7 @@ func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]mode
 		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := ps.db.QueryContext(ctx, query, count, offset)
+	rows, err := ps.db.Query(ctx, query, count, offset)
 	if err != nil {
 		return nil, err
 	}

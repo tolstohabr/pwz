@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -14,18 +14,16 @@ import (
 	"PWZ1.0/internal/storage"
 	desc "PWZ1.0/pkg/pwz"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-const (
-	grpcAddress = "localhost:50051"
-)
+const grpcAddress = "localhost:50051"
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -34,18 +32,20 @@ func main() {
 
 	dsn := os.Getenv("DB_DSN")
 	fmt.Println("DSN:", dsn)
-
 	if dsn == "" {
 		log.Fatal("Postgres DSN is empty — проверь переменные окружения")
 	}
 
-	db, err := sql.Open("pgx", dsn)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	db, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		log.Fatalf("failed to create pgxpool: %v", err)
 	}
 	defer db.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := db.Ping(ctx); err != nil {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
