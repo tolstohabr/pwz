@@ -48,8 +48,8 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := getHistory(ctx, client, 0, 10); err != nil {
-		log.Fatalf("failed to get history: %v", err)
+	if err := getOrderHistory(ctx, client, 20005); err != nil {
+		log.Fatalf("failed to get order history: %v", err)
 	}
 }
 
@@ -275,6 +275,25 @@ func importOrdersFromFile(ctx context.Context, client desc.NotifierClient, fileP
 		for _, id := range resp.Errors {
 			fmt.Printf("- %d\n", id)
 		}
+	}
+	return nil
+}
+
+func getOrderHistory(ctx context.Context, client desc.NotifierClient, orderID uint64) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+
+	req := &desc.OrderHistoryRequest{
+		OrderId: orderID,
+	}
+
+	res, err := client.GetOrderHistory(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to get order history: %w", err)
+	}
+
+	fmt.Printf("История заказа %d:\n", orderID)
+	for _, h := range res.History {
+		fmt.Printf("%s Время: %s\n", h.Status.String(), h.CreatedAt.AsTime().Format(DateTimeFormat))
 	}
 	return nil
 }

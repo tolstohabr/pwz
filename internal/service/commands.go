@@ -40,6 +40,7 @@ type OrderService interface {
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
 	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
+	GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error)
 }
 
 type ProcessResult struct {
@@ -357,4 +358,24 @@ type OrderHistory struct {
 
 func (s *orderService) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {
 	return s.storage.GetHistory(ctx, page, count)
+}
+
+func (s *orderService) GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error) {
+	history, err := s.storage.GetHistory(ctx, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []models.OrderHistory
+	for _, h := range history {
+		if h.OrderID == orderID {
+			filtered = append(filtered, h)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil, domainErrors.ErrOrderNotFound
+	}
+
+	return filtered, nil
 }
