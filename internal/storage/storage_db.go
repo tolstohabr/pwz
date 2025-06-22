@@ -12,6 +12,15 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+type Storage interface {
+	SaveOrder(order models.Order) error
+	GetOrder(id uint64) (models.Order, error)
+	DeleteOrder(id uint64) error
+	ListOrders() ([]models.Order, error)
+	UpdateOrder(order models.Order) error
+	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
+}
+
 type PgStorage struct {
 	db *sql.DB
 }
@@ -47,11 +56,7 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		VALUES ($1, $2)
 	`
 	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
@@ -123,7 +128,7 @@ func (ps *PgStorage) ListOrders() ([]models.Order, error) {
 		orders = append(orders, o)
 	}
 
-	return orders, nil
+	return orders, rows.Err()
 }
 
 func (ps *PgStorage) UpdateOrder(order models.Order) error {
@@ -159,19 +164,7 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 		VALUES ($1, $2)
 	`
 	_, err = ps.db.ExecContext(context.Background(), historyQuery, order.ID, order.Status)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
+	return err
 }
 
 func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {
@@ -208,9 +201,10 @@ func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]mode
 		history = append(history, h)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
+	return history, rows.Err()
+}
 
-	return history, nil
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
