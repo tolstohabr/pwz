@@ -1,0 +1,53 @@
+-- +goose Up
+-- +goose StatementBegin
+
+ALTER TABLE orders
+ALTER COLUMN status TYPE VARCHAR(20) USING
+    CASE status
+      WHEN 0 THEN 'UNSPECIFIED'
+      WHEN 1 THEN 'EXPECTS'
+      WHEN 2 THEN 'ACCEPTED'
+      WHEN 3 THEN 'RETURNED'
+      WHEN 4 THEN 'DELETED'
+      ELSE 'UNSPECIFIED'
+END;
+
+ALTER TABLE order_history
+ALTER COLUMN status TYPE VARCHAR(20) USING
+    CASE status
+      WHEN 0 THEN 'UNSPECIFIED'
+      WHEN 1 THEN 'EXPECTS'
+      WHEN 2 THEN 'ACCEPTED'
+      WHEN 3 THEN 'RETURNED'
+      WHEN 4 THEN 'DELETED'
+      ELSE 'UNSPECIFIED'
+END;
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+ALTER TABLE orders
+ALTER COLUMN status TYPE SMALLINT USING
+    CASE status
+      WHEN 'UNSPECIFIED' THEN 0
+      WHEN 'EXPECTS' THEN 1
+      WHEN 'ACCEPTED' THEN 2
+      WHEN 'RETURNED' THEN 3
+      WHEN 'DELETED' THEN 4
+      ELSE 0
+END;
+
+ALTER TABLE order_history
+ALTER COLUMN status TYPE SMALLINT USING
+    CASE status
+      WHEN 'UNSPECIFIED' THEN 0
+      WHEN 'EXPECTS' THEN 1
+      WHEN 'ACCEPTED' THEN 2
+      WHEN 'RETURNED' THEN 3
+      WHEN 'DELETED' THEN 4
+      ELSE 0
+END;
+
+-- +goose StatementEnd

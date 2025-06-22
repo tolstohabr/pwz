@@ -48,6 +48,10 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
+	/*if err := acceptOrder(ctx, client, 20000, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1.0, 100.0); err != nil {
+		log.Fatalf("%v", err)
+	}*/
+
 	if err := listOrders(ctx, client, 1, true, nil, 0, 15); err != nil {
 		log.Fatalf("failed to list orders: %v", err)
 	}
