@@ -225,6 +225,39 @@
         ]
       }
     },
+    "/order/{orderId}/history": {
+      "get": {
+        "summary": "Получить историю по заказу",
+        "description": "Описание...",
+        "operationId": "Notifier_GetOrderHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrderHistoryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
     "/process_orders": {
       "post": {
         "summary": "Выдать заказы или принять возврат клиента",
@@ -481,6 +514,18 @@
       }
     },
     "notifierOrderHistoryList": {
+      "type": "object",
+      "properties": {
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/notifierOrderHistory"
+          }
+        }
+      }
+    },
+    "notifierOrderHistoryResponse": {
       "type": "object",
       "properties": {
         "history": {

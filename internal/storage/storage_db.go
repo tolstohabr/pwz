@@ -22,8 +22,8 @@ func NewPgStorage(db *sql.DB) *PgStorage {
 
 func (ps *PgStorage) SaveOrder(order models.Order) error {
 	const query = `
-		INSERT INTO orders (id, user_id, status, expires_at, weight, total_price, package_type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+		INSERT INTO orders (id, user_id, status, expires_at, weight, total_price, package_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err := ps.db.ExecContext(context.Background(), query,
 		order.ID,
@@ -47,7 +47,7 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 
 func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
 	const query = `
-		SELECT id, user_id, status, expires_at, weight, total_price, package_type, created_at, updated_at
+		SELECT id, user_id, status, expires_at, weight, total_price, package_type
 		FROM orders WHERE id = $1
 	`
 
@@ -86,7 +86,7 @@ func (ps *PgStorage) DeleteOrder(id uint64) error {
 
 func (ps *PgStorage) ListOrders() ([]models.Order, error) {
 	const query = `
-		SELECT id, user_id, status, expires_at, weight, total_price, package_type, created_at, updated_at
+		SELECT id, user_id, status, expires_at, weight, total_price, package_type
 		FROM orders
 	`
 
@@ -121,7 +121,7 @@ func (ps *PgStorage) UpdateOrder(order models.Order) error {
 	const query = `
 		UPDATE orders
 		SET user_id = $2, status = $3, expires_at = $4, weight = $5,
-			total_price = $6, package_type = $7, updated_at = now()
+			total_price = $6, package_type = $7
 		WHERE id = $1
 	`
 	res, err := ps.db.ExecContext(context.Background(), query,

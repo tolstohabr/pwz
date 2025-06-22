@@ -19,14 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Notifier_SendMessage_FullMethodName   = "/notifier.Notifier/SendMessage"
-	Notifier_AcceptOrder_FullMethodName   = "/notifier.Notifier/AcceptOrder"
-	Notifier_ReturnOrder_FullMethodName   = "/notifier.Notifier/ReturnOrder"
-	Notifier_ProcessOrders_FullMethodName = "/notifier.Notifier/ProcessOrders"
-	Notifier_ListOrders_FullMethodName    = "/notifier.Notifier/ListOrders"
-	Notifier_ListReturns_FullMethodName   = "/notifier.Notifier/ListReturns"
-	Notifier_GetHistory_FullMethodName    = "/notifier.Notifier/GetHistory"
-	Notifier_ImportOrders_FullMethodName  = "/notifier.Notifier/ImportOrders"
+	Notifier_SendMessage_FullMethodName     = "/notifier.Notifier/SendMessage"
+	Notifier_AcceptOrder_FullMethodName     = "/notifier.Notifier/AcceptOrder"
+	Notifier_ReturnOrder_FullMethodName     = "/notifier.Notifier/ReturnOrder"
+	Notifier_ProcessOrders_FullMethodName   = "/notifier.Notifier/ProcessOrders"
+	Notifier_ListOrders_FullMethodName      = "/notifier.Notifier/ListOrders"
+	Notifier_ListReturns_FullMethodName     = "/notifier.Notifier/ListReturns"
+	Notifier_GetHistory_FullMethodName      = "/notifier.Notifier/GetHistory"
+	Notifier_ImportOrders_FullMethodName    = "/notifier.Notifier/ImportOrders"
+	Notifier_GetOrderHistory_FullMethodName = "/notifier.Notifier/GetOrderHistory"
 )
 
 // NotifierClient is the client API for Notifier service.
@@ -49,6 +50,8 @@ type NotifierClient interface {
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*OrderHistoryList, error)
 	// Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
 	ImportOrders(ctx context.Context, in *ImportOrdersRequest, opts ...grpc.CallOption) (*ImportResult, error)
+	// TODO:новая ручка
+	GetOrderHistory(ctx context.Context, in *OrderHistoryRequest, opts ...grpc.CallOption) (*OrderHistoryResponse, error)
 }
 
 type notifierClient struct {
@@ -139,6 +142,16 @@ func (c *notifierClient) ImportOrders(ctx context.Context, in *ImportOrdersReque
 	return out, nil
 }
 
+func (c *notifierClient) GetOrderHistory(ctx context.Context, in *OrderHistoryRequest, opts ...grpc.CallOption) (*OrderHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OrderHistoryResponse)
+	err := c.cc.Invoke(ctx, Notifier_GetOrderHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NotifierServer is the server API for Notifier service.
 // All implementations must embed UnimplementedNotifierServer
 // for forward compatibility.
@@ -159,6 +172,8 @@ type NotifierServer interface {
 	GetHistory(context.Context, *GetHistoryRequest) (*OrderHistoryList, error)
 	// Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
 	ImportOrders(context.Context, *ImportOrdersRequest) (*ImportResult, error)
+	// TODO:новая ручка
+	GetOrderHistory(context.Context, *OrderHistoryRequest) (*OrderHistoryResponse, error)
 	mustEmbedUnimplementedNotifierServer()
 }
 
@@ -192,6 +207,9 @@ func (UnimplementedNotifierServer) GetHistory(context.Context, *GetHistoryReques
 }
 func (UnimplementedNotifierServer) ImportOrders(context.Context, *ImportOrdersRequest) (*ImportResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ImportOrders not implemented")
+}
+func (UnimplementedNotifierServer) GetOrderHistory(context.Context, *OrderHistoryRequest) (*OrderHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOrderHistory not implemented")
 }
 func (UnimplementedNotifierServer) mustEmbedUnimplementedNotifierServer() {}
 func (UnimplementedNotifierServer) testEmbeddedByValue()                  {}
@@ -358,6 +376,24 @@ func _Notifier_ImportOrders_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Notifier_GetOrderHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OrderHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotifierServer).GetOrderHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Notifier_GetOrderHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotifierServer).GetOrderHistory(ctx, req.(*OrderHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Notifier_ServiceDesc is the grpc.ServiceDesc for Notifier service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -396,6 +432,10 @@ var Notifier_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ImportOrders",
 			Handler:    _Notifier_ImportOrders_Handler,
+		},
+		{
+			MethodName: "GetOrderHistory",
+			Handler:    _Notifier_GetOrderHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -36,7 +36,7 @@ type OrderService interface {
 	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
 	ReturnOrder(orderID uint64) (*OrderResponse, error)
 	ProcessOrders(ctx context.Context, userID uint64, action models.ActionType, orderIDs []uint64) ProcessResult
-	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastCount, page, limit uint32) ([]models.Order, uint32)
+	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId, page, limit uint32) ([]models.Order, uint32)
 	ListReturns(req ListReturnsRequest) ReturnsList
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
 	SaveOrder(order models.Order) error
@@ -65,7 +65,6 @@ func (s *orderService) SaveOrder(order models.Order) error {
 	return s.storage.SaveOrder(order)
 }
 
-// AcceptOrder добавить заказ в ПВЗ
 func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
@@ -77,29 +76,24 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 		PackageType: package_type,
 	}
 
-	//валидна ли упаковка
 	if !IsValidPackage(package_type) {
 		return newOrder, domainErrors.ErrInvalidPackage
 	}
 
-	//если срок хранения в прошлом
 	if expiresAt.Before(time.Now()) {
 		return newOrder, domainErrors.ErrValidationFailed
 	}
 
-	//если такой заказ уже есть
 	_, err := s.storage.GetOrder(orderID)
 	if err == nil {
 		return newOrder, domainErrors.ErrOrderAlreadyExists
 	}
 
-	//валидация веса
 	err = newOrder.ValidationWeight()
 	if err != nil {
 		return newOrder, err
 	}
 
-	//расчёт всей стоимости
 	newOrder.CalculateTotalPrice()
 
 	appendToHistory(ctx, orderID, models.StatusExpects)
@@ -107,7 +101,6 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 	return newOrder, s.storage.SaveOrder(newOrder)
 }
 
-// IsValidPackage валидна ли упаковка
 func IsValidPackage(pkg models.PackageType) bool {
 	switch pkg {
 	case models.PackageBag, models.PackageBox, models.PackageTape, models.PackageBagTape, models.PackageBoxTape, models.PackageUnspecified:
@@ -116,7 +109,6 @@ func IsValidPackage(pkg models.PackageType) bool {
 	return false
 }
 
-// ReturnOrder удалить заказ
 func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 	order, err := s.storage.GetOrder(orderID)
 	if err != nil {
@@ -152,7 +144,6 @@ func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 	}, nil
 }
 
-// ProcessOrders обработать выдачу или возврат заказа
 func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionType models.ActionType, orderIDs []uint64) ProcessResult {
 	result := ProcessResult{
 		Processed: make([]uint64, 0),
@@ -201,9 +192,8 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 	return result
 }
 
-// ListOrders вывести список заказов
 func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId uint32, page uint32, limit uint32) ([]models.Order, uint32) {
-	if limit <= 0 {
+	if limit == 0 {
 		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
 		return nil, 0
 	}
@@ -248,7 +238,6 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 	return filtered, total
 }
 
-// ListReturns вывести список возвратов
 func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 	allOrders, err := s.storage.ListOrders()
 	if err != nil {
@@ -280,7 +269,6 @@ func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 	return ReturnsList{Returns: returned}
 }
 
-// ScrollOrders прокрутка
 func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]models.Order, uint64) {
 	allOrders, err := s.storage.ListOrders()
 	if err != nil {
@@ -323,7 +311,6 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 	return result, nextLastID
 }
 
-// appendToHistory для добавления записи об изменении статуса в json-ку
 func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
 	record := struct {
 		OrderID   uint64 `json:"order_id"`
@@ -332,7 +319,7 @@ func appendToHistory(ctx context.Context, orderID uint64, status models.OrderSta
 	}{
 		OrderID:   orderID,
 		Status:    string(status),
-		Timestamp: time.Now().Format(time.RFC3339), // ISO-8601 формат, как в proto Timestamp
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 
 	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -363,14 +350,12 @@ type OrderHistoryList struct {
 	History []OrderHistory
 }
 
-// OrderHistory
 type OrderHistory struct {
 	OrderID   uint64
 	Status    models.OrderStatus
 	CreatedAt time.Time
 }
 
-// GetHistory получить историю изменений заказов
 func (s *orderService) GetHistory(req GetHistoryRequest) OrderHistoryList {
 	file, err := os.Open("order_history.json")
 	if err != nil {
