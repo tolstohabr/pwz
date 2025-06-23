@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	desc "PWZ1.0/pkg/pwz"
@@ -20,41 +18,40 @@ const (
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
-type ImportJSON struct {
-	Orders []struct {
-		OrderID   uint64  `json:"order_id"`
-		UserID    uint64  `json:"user_id"`
-		ExpiresAt string  `json:"expires_at"`
-		Package   string  `json:"package"`
-		Weight    float32 `json:"weight"`
-		Price     float32 `json:"price"`
-	} `json:"orders"`
-}
-
+// TODO:
 func main() {
 	conn, err := grpc.NewClient(grpcAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to create gRPC client %v", err)
+		log.Fatalf("Failed to connect: %v", err)
 	}
-	defer func() {
-		err := conn.Close()
-		if err != nil {
-			log.Fatalf("Failed to close gRPC client %v", err)
-		}
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	defer conn.Close()
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := listReturns(ctx, client, 0, 10); err != nil {
-		log.Fatalf("failed to list returns: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// слэйв
+	if err := listOrders(ctx, client, 1, false, nil, 0, 20); err != nil {
+		log.Fatalf("listOrders failed: %v", err)
+	}
+
+	// мастер
+	if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{20012}); err != nil {
+		log.Fatalf("processOrders flaied: %v", err)
 	}
 }
 
+func addReadMetadata(ctx context.Context) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, "mode", "read")
+}
+
+func addWriteMetadata(ctx context.Context) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, "mode", "write")
+}
+
 func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64, userID uint64, expiresAt time.Time, pkg *desc.PackageType, weight float32, price float32) error {
-	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
+	ctx = addWriteMetadata(ctx)
 
 	req := &desc.AcceptOrderRequest{
 		OrderId:   orderID,
@@ -79,20 +76,17 @@ func ptr[T any](v T) *T {
 }
 
 func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, inPvz bool, lastN *uint32, page uint32, limit uint32) error {
+	ctx = addReadMetadata(ctx)
+
 	req := &desc.ListOrdersRequest{
 		UserId: userID,
 		InPvz:  inPvz,
 		LastN:  lastN,
-	}
-
-	if page > 0 || limit > 0 {
-		req.Pagination = &desc.Pagination{
+		Pagination: &desc.Pagination{
 			Page:        page,
 			CountOnPage: limit,
-		}
+		},
 	}
-
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "bearer my-token"))
 
 	resp, err := client.ListOrders(ctx, req)
 	if err != nil {
@@ -120,6 +114,7 @@ func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, 
 }
 
 func processOrders(ctx context.Context, client desc.NotifierClient, userID uint64, action desc.ActionType, orderIDs []uint64) error {
+	ctx = addWriteMetadata(ctx)
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.ProcessOrdersRequest{
@@ -149,6 +144,7 @@ func processOrders(ctx context.Context, client desc.NotifierClient, userID uint6
 }
 
 func returnOrder(ctx context.Context, client desc.NotifierClient, orderID uint64) error {
+	ctx = addWriteMetadata(ctx)
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.OrderIdRequest{
@@ -165,6 +161,7 @@ func returnOrder(ctx context.Context, client desc.NotifierClient, orderID uint64
 }
 
 func listReturns(ctx context.Context, client desc.NotifierClient, page uint32, limit uint32) error {
+	ctx = addReadMetadata(ctx)
 	req := &desc.ListReturnsRequest{
 		Pagination: &desc.Pagination{
 			Page:        page,
@@ -201,6 +198,7 @@ func listReturns(ctx context.Context, client desc.NotifierClient, page uint32, l
 }
 
 func getHistory(ctx context.Context, client desc.NotifierClient, page, count uint32) error {
+	ctx = addReadMetadata(ctx)
 	req := &desc.GetHistoryRequest{
 		Pagination: &desc.Pagination{
 			Page:        page,
@@ -223,63 +221,8 @@ func getHistory(ctx context.Context, client desc.NotifierClient, page, count uin
 	return nil
 }
 
-func importOrdersFromFile(ctx context.Context, client desc.NotifierClient, filePath string) error {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read JSON file: %w", err)
-	}
-
-	var parsed ImportJSON
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
-	}
-
-	var orders []*desc.AcceptOrderRequest
-	for _, o := range parsed.Orders {
-		t, err := time.Parse(time.RFC3339, o.ExpiresAt)
-		if err != nil {
-			return fmt.Errorf("invalid time format for order %d: %w", o.OrderID, err)
-		}
-
-		var pkg desc.PackageType = desc.PackageType_PACKAGE_TYPE_UNSPECIFIED
-		if o.Package != "" {
-			if parsedPkg, ok := desc.PackageType_value[o.Package]; ok {
-				pkg = desc.PackageType(parsedPkg)
-			} else {
-				log.Printf("Warning: unknown package type for order %d: %s", o.OrderID, o.Package)
-			}
-		}
-
-		orders = append(orders, &desc.AcceptOrderRequest{
-			OrderId:   o.OrderID,
-			UserId:    o.UserID,
-			ExpiresAt: timestamppb.New(t),
-			Package:   &pkg,
-			Weight:    o.Weight,
-			Price:     o.Price,
-		})
-	}
-
-	req := &desc.ImportOrdersRequest{
-		Orders: orders,
-	}
-
-	resp, err := client.ImportOrders(ctx, req)
-	if err != nil {
-		return fmt.Errorf("ImportOrders RPC failed: %w", err)
-	}
-
-	fmt.Printf("Импортировано заказов: %d\n", resp.Imported)
-	if len(resp.Errors) > 0 {
-		fmt.Println("Ошибки при импорте (order_ids):")
-		for _, id := range resp.Errors {
-			fmt.Printf("- %d\n", id)
-		}
-	}
-	return nil
-}
-
 func getOrderHistory(ctx context.Context, client desc.NotifierClient, orderID uint64) error {
+	ctx = addReadMetadata(ctx)
 	ctx = metadata.AppendToOutgoingContext(ctx, "sender", "go-client", "client-version", "1.0")
 
 	req := &desc.OrderHistoryRequest{
