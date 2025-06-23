@@ -33,7 +33,7 @@ func main() {
 	dsn := os.Getenv("DB_DSN")
 	fmt.Println("DSN:", dsn)
 	if dsn == "" {
-		log.Fatal("Postgres DSN is empty — проверь переменные окружения")
+		log.Fatal("Postgres DSN is empty")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

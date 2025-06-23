@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (i *Implementation) ListReturns(_ context.Context, req *pwz.ListReturnsRequest) (*pwz.ReturnsList, error) {
+func (i *Implementation) ListReturns(ctx context.Context, req *pwz.ListReturnsRequest) (*pwz.ReturnsList, error) {
 	serviceReq := service.ListReturnsRequest{
 		Pagination: service.Pagination{
 			Page:        req.Pagination.GetPage(),
@@ -17,7 +17,7 @@ func (i *Implementation) ListReturns(_ context.Context, req *pwz.ListReturnsRequ
 		},
 	}
 
-	serviceResp := i.orderService.ListReturns(serviceReq)
+	serviceResp := i.orderService.ListReturns(ctx, serviceReq)
 
 	var returns []*pwz.Order
 	for _, o := range serviceResp.Returns {

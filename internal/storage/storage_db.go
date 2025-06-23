@@ -3,42 +3,71 @@ package storage
 import (
 	"context"
 	"errors"
+	"log"
+	"time"
 
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Storage interface {
-	GetOrder(id uint64) (models.Order, error)
-	DeleteOrder(id uint64) error
-	ListOrders() ([]models.Order, error)
+	GetOrder(ctx context.Context, id uint64) (models.Order, error)
+	DeleteOrder(ctx context.Context, id uint64) error
+	ListOrders(ctx context.Context) ([]models.Order, error)
 	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
 	SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
 	UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
 	WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error
 }
 
+type PgStorage struct {
+	db *pgxpool.Pool
+}
+
+func NewPgStorage(db *pgxpool.Pool) *PgStorage {
+	return &PgStorage{db: db}
+}
+
+func (ps *PgStorage) logQuery(ctx context.Context, query string, args ...interface{}) {
+	log.Printf("SQL: %s\nArgs: %v\n", query, args)
+}
+
 func (ps *PgStorage) WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
+	start := time.Now()
+	log.Println("Starting transaction")
+
 	tx, err := ps.db.Begin(ctx)
 	if err != nil {
+		log.Printf("Failed to begin transaction: %v\n", err)
 		return err
 	}
+
 	defer func() {
 		if p := recover(); p != nil {
+			log.Printf("Transaction panic: %v, rolling back\n", p)
 			_ = tx.Rollback(ctx)
 			panic(p)
 		}
 	}()
 
 	if err := fn(ctx, tx); err != nil {
+		log.Printf("Transaction failed: %v, rolling back\n", err)
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	return tx.Commit(ctx)
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Printf("Failed to commit transaction: %v\n", err)
+		return err
+	}
+
+	log.Printf("Transaction committed (duration: %v)\n", time.Since(start))
+	return nil
 }
 
 func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error {
@@ -46,6 +75,8 @@ func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Or
 		INSERT INTO orders (id, user_id, status, expires_at, weight, total_price, package_type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
+	ps.logQuery(ctx, query, order.ID, order.UserID, order.Status, order.ExpiresAt, order.Weight, order.Price, order.PackageType)
+
 	_, err := tx.Exec(ctx, query,
 		order.ID,
 		order.UserID,
@@ -57,8 +88,10 @@ func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Or
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
+			log.Printf("Duplicate order: %v\n", order.ID)
 			return domainErrors.ErrDuplicateOrder
 		}
+		log.Printf("Failed to save order: %v\n", err)
 		return err
 	}
 
@@ -66,7 +99,12 @@ func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Or
 		INSERT INTO order_history (order_id, status)
 		VALUES ($1, $2)
 	`
+	ps.logQuery(ctx, historyQuery, order.ID, order.Status)
+
 	_, err = tx.Exec(ctx, historyQuery, order.ID, order.Status)
+	if err != nil {
+		log.Printf("Failed to save order history: %v\n", err)
+	}
 	return err
 }
 
@@ -77,6 +115,16 @@ func (ps *PgStorage) UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.
 			total_price = $6, package_type = $7
 		WHERE id = $1
 	`
+	ps.logQuery(ctx, query,
+		order.ID,
+		order.UserID,
+		order.Status,
+		order.ExpiresAt,
+		order.Weight,
+		order.Price,
+		order.PackageType,
+	)
+
 	cmdTag, err := tx.Exec(ctx, query,
 		order.ID,
 		order.UserID,
@@ -87,9 +135,11 @@ func (ps *PgStorage) UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.
 		order.PackageType,
 	)
 	if err != nil {
+		log.Printf("Failed to update order: %v\n", err)
 		return err
 	}
 	if cmdTag.RowsAffected() == 0 {
+		log.Printf("Order not found for update: %v\n", order.ID)
 		return domainErrors.ErrOrderNotFound
 	}
 
@@ -97,26 +147,24 @@ func (ps *PgStorage) UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.
 		INSERT INTO order_history (order_id, status)
 		VALUES ($1, $2)
 	`
+	ps.logQuery(ctx, historyQuery, order.ID, order.Status)
+
 	_, err = tx.Exec(ctx, historyQuery, order.ID, order.Status)
+	if err != nil {
+		log.Printf("Failed to update order history: %v\n", err)
+	}
 	return err
 }
 
-type PgStorage struct {
-	db *pgxpool.Pool
-}
-
-func NewPgStorage(db *pgxpool.Pool) *PgStorage {
-	return &PgStorage{db: db}
-}
-
-func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
+func (ps *PgStorage) GetOrder(ctx context.Context, id uint64) (models.Order, error) {
 	const query = `
 		SELECT id, user_id, status, expires_at, weight, total_price, package_type
 		FROM orders WHERE id = $1
 	`
+	ps.logQuery(ctx, query, id)
 
 	var order models.Order
-	err := ps.db.QueryRow(context.Background(), query, id).Scan(
+	err := ps.db.QueryRow(ctx, query, id).Scan(
 		&order.ID,
 		&order.UserID,
 		&order.Status,
@@ -126,32 +174,44 @@ func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
 		&order.PackageType,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Order not found: %v\n", id)
 		return models.Order{}, domainErrors.ErrOrderNotFound
+	}
+	if err != nil {
+		log.Printf("Failed to get order: %v\n", err)
 	}
 	return order, err
 }
 
-func (ps *PgStorage) DeleteOrder(id uint64) error {
+func (ps *PgStorage) DeleteOrder(ctx context.Context, id uint64) error {
 	const query = `DELETE FROM orders WHERE id = $1`
-	cmdTag, err := ps.db.Exec(context.Background(), query, id)
+	ps.logQuery(ctx, query, id)
+
+	cmdTag, err := ps.db.Exec(ctx, query, id)
 	if err != nil {
+		log.Printf("Failed to delete order: %v\n", err)
 		return err
 	}
 
 	if cmdTag.RowsAffected() == 0 {
+		log.Printf("Order not found for deletion: %v\n", id)
 		return domainErrors.ErrOrderNotFound
 	}
+
+	log.Printf("Order deleted: %v\n", id)
 	return nil
 }
 
-func (ps *PgStorage) ListOrders() ([]models.Order, error) {
+func (ps *PgStorage) ListOrders(ctx context.Context) ([]models.Order, error) {
 	const query = `
 		SELECT id, user_id, status, expires_at, weight, total_price, package_type
 		FROM orders
 	`
+	ps.logQuery(ctx, query)
 
-	rows, err := ps.db.Query(context.Background(), query)
+	rows, err := ps.db.Query(ctx, query)
 	if err != nil {
+		log.Printf("Failed to list orders: %v\n", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -169,11 +229,13 @@ func (ps *PgStorage) ListOrders() ([]models.Order, error) {
 			&o.PackageType,
 		)
 		if err != nil {
+			log.Printf("Failed to scan order row: %v\n", err)
 			return nil, err
 		}
 		orders = append(orders, o)
 	}
 
+	log.Printf("Listed %d orders\n", len(orders))
 	return orders, rows.Err()
 }
 
@@ -189,9 +251,11 @@ func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]mode
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`
+	ps.logQuery(ctx, query, count, offset)
 
 	rows, err := ps.db.Query(ctx, query, count, offset)
 	if err != nil {
+		log.Printf("Failed to get order history: %v\n", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -206,11 +270,13 @@ func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]mode
 			&h.CreatedAt,
 		)
 		if err != nil {
+			log.Printf("Failed to scan history row: %v\n", err)
 			return nil, err
 		}
 		history = append(history, h)
 	}
 
+	log.Printf("Retrieved %d history entries\n", len(history))
 	return history, rows.Err()
 }
 

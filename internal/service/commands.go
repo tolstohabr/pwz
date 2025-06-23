@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"sort"
 	"time"
 
@@ -32,11 +33,11 @@ type ReturnsList struct {
 
 type OrderService interface {
 	AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error)
-	ReturnOrder(orderID uint64) (*OrderResponse, error)
+	ReturnOrder(ctx context.Context, orderID uint64) (*OrderResponse, error)
 	ProcessOrders(ctx context.Context, userID uint64, action models.ActionType, orderIDs []uint64) ProcessResult
 	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId, page, limit uint32) ([]models.Order, uint32)
-	ListReturns(req ListReturnsRequest) ReturnsList
-	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
+	ListReturns(ctx context.Context, req ListReturnsRequest) ReturnsList
+	ScrollOrders(ctx context.Context, userID, lastID uint64, limit int) ([]models.Order, uint64)
 	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
 	GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error)
 }
@@ -60,6 +61,8 @@ func NewOrderService(storage storage.Storage) OrderService {
 }
 
 func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error) {
+	log.Printf("AcceptOrder called: orderID=%d, userID=%d", orderID, userID)
+
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,
@@ -71,19 +74,23 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 	}
 
 	if !IsValidPackage(packageType) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrInvalidPackage, "Invalid package type")
 		return newOrder, domainErrors.ErrInvalidPackage
 	}
 
 	if expiresAt.Before(time.Now()) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "Expiration date in past")
 		return newOrder, domainErrors.ErrValidationFailed
 	}
 
-	_, err := s.storage.GetOrder(orderID)
+	_, err := s.storage.GetOrder(ctx, orderID)
 	if err == nil {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrOrderAlreadyExists, "Order already exists")
 		return newOrder, domainErrors.ErrOrderAlreadyExists
 	}
 
 	if err := newOrder.ValidationWeight(); err != nil {
+		logger.LogErrorWithCode(ctx, err, "Weight validation failed")
 		return newOrder, err
 	}
 
@@ -93,9 +100,11 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 		return s.storage.SaveOrderTx(ctx, tx, newOrder)
 	})
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to save order")
 		return newOrder, err
 	}
 
+	log.Printf("Order accepted successfully: orderID=%d", orderID)
 	return newOrder, nil
 }
 
@@ -107,21 +116,27 @@ func IsValidPackage(pkg models.PackageType) bool {
 	return false
 }
 
-func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
-	order, err := s.storage.GetOrder(orderID)
+func (s *orderService) ReturnOrder(ctx context.Context, orderID uint64) (*OrderResponse, error) {
+	log.Printf("ReturnOrder called: orderID=%d", orderID)
+
+	order, err := s.storage.GetOrder(ctx, orderID)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to get order for return")
 		return nil, err
 	}
 
 	if order.Status == models.StatusAccepted {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrOrderAlreadyIssued, "Order already issued")
 		return nil, domainErrors.ErrOrderAlreadyIssued
 	}
 
 	if order.Status == models.StatusReturned {
-		err := s.storage.DeleteOrder(orderID)
+		err := s.storage.DeleteOrder(ctx, orderID)
 		if err != nil {
+			logger.LogErrorWithCode(ctx, err, "Failed to delete returned order")
 			return nil, err
 		}
+		log.Printf("Returned order deleted: orderID=%d", orderID)
 		return &OrderResponse{
 			OrderID: orderID,
 			Status:  models.StatusDeleted,
@@ -129,13 +144,17 @@ func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 	}
 
 	if time.Now().Before(order.ExpiresAt) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrStorageNotExpired, "Storage not expired yet")
 		return nil, domainErrors.ErrStorageNotExpired
 	}
 
-	err = s.storage.DeleteOrder(orderID)
+	err = s.storage.DeleteOrder(ctx, orderID)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to delete expired order")
 		return nil, err
 	}
+
+	log.Printf("Expired order deleted: orderID=%d", orderID)
 	return &OrderResponse{
 		OrderID: orderID,
 		Status:  models.StatusDeleted,
@@ -143,6 +162,8 @@ func (s *orderService) ReturnOrder(orderID uint64) (*OrderResponse, error) {
 }
 
 func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionType models.ActionType, orderIDs []uint64) ProcessResult {
+	log.Printf("ProcessOrders called: userID=%d, action=%v, orderIDs=%v", userID, actionType, orderIDs)
+
 	result := ProcessResult{
 		Processed: make([]uint64, 0),
 		Errors:    make([]uint64, 0),
@@ -150,7 +171,7 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 
 	err := s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		for _, id := range orderIDs {
-			order, err := s.storage.GetOrder(id)
+			order, err := s.storage.GetOrder(ctx, id)
 			if err != nil || order.UserID != userID {
 				result.Errors = append(result.Errors, id)
 				continue
@@ -193,20 +214,25 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 	})
 
 	if err != nil {
-		logger.LogErrorWithCode(ctx, err, "ошибка транзакции при обработке заказов")
+		logger.LogErrorWithCode(ctx, err, "Transaction error in ProcessOrders")
 	}
 
+	log.Printf("ProcessOrders result: processed=%d, errors=%d", len(result.Processed), len(result.Errors))
 	return result
 }
 
 func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId uint32, page uint32, limit uint32) ([]models.Order, uint32) {
+	log.Printf("ListOrders called: userID=%d, inPvzOnly=%v, lastId=%d, page=%d, limit=%d",
+		userID, inPvzOnly, lastId, page, limit)
+
 	if limit == 0 {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "limit должен быть больше нуля")
+		logger.LogErrorWithCode(ctx, domainErrors.ErrValidationFailed, "Limit must be greater than zero")
 		return nil, 0
 	}
 
-	allOrders, err := s.storage.ListOrders()
+	allOrders, err := s.storage.ListOrders(ctx)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to list orders")
 		return []models.Order{}, 0
 	}
 
@@ -242,12 +268,16 @@ func (s *orderService) ListOrders(ctx context.Context, userID uint64, inPvzOnly 
 	}
 	filtered = filtered[start:end]
 
+	log.Printf("ListOrders result: count=%d", len(filtered))
 	return filtered, total
 }
 
-func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
-	allOrders, err := s.storage.ListOrders()
+func (s *orderService) ListReturns(ctx context.Context, req ListReturnsRequest) ReturnsList {
+	log.Printf("ListReturns called: page=%d, count=%d", req.Pagination.Page, req.Pagination.CountOnPage)
+
+	allOrders, err := s.storage.ListOrders(ctx)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to list returns")
 		return ReturnsList{}
 	}
 
@@ -273,12 +303,16 @@ func (s *orderService) ListReturns(req ListReturnsRequest) ReturnsList {
 		return ReturnsList{Returns: returned[start:end]}
 	}
 
+	log.Printf("ListReturns result: count=%d", len(returned))
 	return ReturnsList{Returns: returned}
 }
 
-func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]models.Order, uint64) {
-	allOrders, err := s.storage.ListOrders()
+func (s *orderService) ScrollOrders(ctx context.Context, userID uint64, lastID uint64, limit int) ([]models.Order, uint64) {
+	log.Printf("ScrollOrders called: userID=%d, lastID=%d, limit=%d", userID, lastID, limit)
+
+	allOrders, err := s.storage.ListOrders(ctx)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to list orders for scrolling")
 		return []models.Order{}, 0
 	}
 
@@ -315,30 +349,21 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 		nextLastID = result[len(result)-1].ID
 	}
 
+	log.Printf("ScrollOrders result: count=%d, nextLastID=%d", len(result), nextLastID)
 	return result, nextLastID
 }
 
-type GetHistoryRequest struct {
-	Pagination Pagination
-}
-
-type OrderHistoryList struct {
-	History []OrderHistory
-}
-
-type OrderHistory struct {
-	OrderID   uint64
-	Status    models.OrderStatus
-	CreatedAt time.Time
-}
-
 func (s *orderService) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {
+	log.Printf("GetHistory called: page=%d, count=%d", page, count)
 	return s.storage.GetHistory(ctx, page, count)
 }
 
 func (s *orderService) GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error) {
+	log.Printf("GetOrderHistory called: orderID=%d", orderID)
+
 	history, err := s.storage.GetHistory(ctx, 0, 0)
 	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to get order history")
 		return nil, err
 	}
 
@@ -350,8 +375,10 @@ func (s *orderService) GetOrderHistory(ctx context.Context, orderID uint64) ([]m
 	}
 
 	if len(filtered) == 0 {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrOrderNotFound, "Order history not found")
 		return nil, domainErrors.ErrOrderNotFound
 	}
 
+	log.Printf("GetOrderHistory result: count=%d", len(filtered))
 	return filtered, nil
 }

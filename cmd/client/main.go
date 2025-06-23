@@ -25,7 +25,7 @@ type ImportJSON struct {
 		OrderID   uint64  `json:"order_id"`
 		UserID    uint64  `json:"user_id"`
 		ExpiresAt string  `json:"expires_at"`
-		Package   string  `json:"package"` // опционально
+		Package   string  `json:"package"`
 		Weight    float32 `json:"weight"`
 		Price     float32 `json:"price"`
 	} `json:"orders"`
@@ -48,8 +48,8 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := getOrderHistory(ctx, client, 20011); err != nil {
-		log.Fatalf("failed to get order history: %v", err)
+	if err := listReturns(ctx, client, 0, 10); err != nil {
+		log.Fatalf("failed to list returns: %v", err)
 	}
 }
 
