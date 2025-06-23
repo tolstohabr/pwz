@@ -13,28 +13,40 @@ import (
 )
 
 type Storage interface {
-	SaveOrder(order models.Order) error
 	GetOrder(id uint64) (models.Order, error)
 	DeleteOrder(id uint64) error
 	ListOrders() ([]models.Order, error)
-	UpdateOrder(order models.Order) error
 	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
+	SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
+	UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
+	WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error
 }
 
-type PgStorage struct {
-	db *pgxpool.Pool
+func (ps *PgStorage) WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error {
+	tx, err := ps.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback(ctx)
+			panic(p)
+		}
+	}()
+
+	if err := fn(ctx, tx); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
-func NewPgStorage(db *pgxpool.Pool) *PgStorage {
-	return &PgStorage{db: db}
-}
-
-func (ps *PgStorage) SaveOrder(order models.Order) error {
+func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error {
 	const query = `
 		INSERT INTO orders (id, user_id, status, expires_at, weight, total_price, package_type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
-	_, err := ps.db.Exec(context.Background(), query,
+	_, err := tx.Exec(ctx, query,
 		order.ID,
 		order.UserID,
 		order.Status,
@@ -54,8 +66,47 @@ func (ps *PgStorage) SaveOrder(order models.Order) error {
 		INSERT INTO order_history (order_id, status)
 		VALUES ($1, $2)
 	`
-	_, err = ps.db.Exec(context.Background(), historyQuery, order.ID, order.Status)
+	_, err = tx.Exec(ctx, historyQuery, order.ID, order.Status)
 	return err
+}
+
+func (ps *PgStorage) UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error {
+	const query = `
+		UPDATE orders
+		SET user_id = $2, status = $3, expires_at = $4, weight = $5,
+			total_price = $6, package_type = $7
+		WHERE id = $1
+	`
+	cmdTag, err := tx.Exec(ctx, query,
+		order.ID,
+		order.UserID,
+		order.Status,
+		order.ExpiresAt,
+		order.Weight,
+		order.Price,
+		order.PackageType,
+	)
+	if err != nil {
+		return err
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return domainErrors.ErrOrderNotFound
+	}
+
+	const historyQuery = `
+		INSERT INTO order_history (order_id, status)
+		VALUES ($1, $2)
+	`
+	_, err = tx.Exec(ctx, historyQuery, order.ID, order.Status)
+	return err
+}
+
+type PgStorage struct {
+	db *pgxpool.Pool
+}
+
+func NewPgStorage(db *pgxpool.Pool) *PgStorage {
+	return &PgStorage{db: db}
 }
 
 func (ps *PgStorage) GetOrder(id uint64) (models.Order, error) {
@@ -124,38 +175,6 @@ func (ps *PgStorage) ListOrders() ([]models.Order, error) {
 	}
 
 	return orders, rows.Err()
-}
-
-func (ps *PgStorage) UpdateOrder(order models.Order) error {
-	const query = `
-		UPDATE orders
-		SET user_id = $2, status = $3, expires_at = $4, weight = $5,
-			total_price = $6, package_type = $7
-		WHERE id = $1
-	`
-	cmdTag, err := ps.db.Exec(context.Background(), query,
-		order.ID,
-		order.UserID,
-		order.Status,
-		order.ExpiresAt,
-		order.Weight,
-		order.Price,
-		order.PackageType,
-	)
-	if err != nil {
-		return err
-	}
-
-	if cmdTag.RowsAffected() == 0 {
-		return domainErrors.ErrOrderNotFound
-	}
-
-	const historyQuery = `
-		INSERT INTO order_history (order_id, status)
-		VALUES ($1, $2)
-	`
-	_, err = ps.db.Exec(context.Background(), historyQuery, order.ID, order.Status)
-	return err
 }
 
 func (ps *PgStorage) GetHistory(ctx context.Context, page, count uint32) ([]models.OrderHistory, error) {

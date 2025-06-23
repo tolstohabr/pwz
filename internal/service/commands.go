@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"sort"
 	"time"
 
@@ -11,6 +9,7 @@ import (
 	"PWZ1.0/internal/models/domainErrors"
 	"PWZ1.0/internal/storage"
 	"PWZ1.0/internal/tools/logger"
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -38,7 +37,6 @@ type OrderService interface {
 	ListOrders(ctx context.Context, userID uint64, inPvzOnly bool, lastId, page, limit uint32) ([]models.Order, uint32)
 	ListReturns(req ListReturnsRequest) ReturnsList
 	ScrollOrders(userID, lastID uint64, limit int) ([]models.Order, uint64)
-	SaveOrder(order models.Order) error
 	GetHistory(ctx context.Context, page uint32, count uint32) ([]models.OrderHistory, error)
 	GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error)
 }
@@ -61,11 +59,7 @@ func NewOrderService(storage storage.Storage) OrderService {
 	return &orderService{storage: storage}
 }
 
-func (s *orderService) SaveOrder(order models.Order) error {
-	return s.storage.SaveOrder(order)
-}
-
-func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, package_type models.PackageType) (models.Order, error) {
+func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error) {
 	newOrder := models.Order{
 		ID:          orderID,
 		UserID:      userID,
@@ -73,10 +67,10 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 		Status:      models.StatusExpects,
 		Weight:      weight,
 		Price:       price,
-		PackageType: package_type,
+		PackageType: packageType,
 	}
 
-	if !IsValidPackage(package_type) {
+	if !IsValidPackage(packageType) {
 		return newOrder, domainErrors.ErrInvalidPackage
 	}
 
@@ -89,16 +83,20 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 		return newOrder, domainErrors.ErrOrderAlreadyExists
 	}
 
-	err = newOrder.ValidationWeight()
-	if err != nil {
+	if err := newOrder.ValidationWeight(); err != nil {
 		return newOrder, err
 	}
 
 	newOrder.CalculateTotalPrice()
 
-	appendToHistory(ctx, orderID, models.StatusExpects)
+	err = s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.SaveOrderTx(ctx, tx, newOrder)
+	})
+	if err != nil {
+		return newOrder, err
+	}
 
-	return newOrder, s.storage.SaveOrder(newOrder)
+	return newOrder, nil
 }
 
 func IsValidPackage(pkg models.PackageType) bool {
@@ -150,43 +148,52 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 		Errors:    make([]uint64, 0),
 	}
 
-	for _, id := range orderIDs {
-		order, err := s.storage.GetOrder(id)
-		if err != nil || order.UserID != userID {
-			result.Errors = append(result.Errors, id)
-			continue
-		}
-
-		if time.Now().After(order.ExpiresAt) {
-			result.Errors = append(result.Errors, id)
-			continue
-		}
-
-		switch actionType {
-		case models.ActionTypeIssue:
-			if order.Status != models.StatusExpects {
+	err := s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		for _, id := range orderIDs {
+			order, err := s.storage.GetOrder(id)
+			if err != nil || order.UserID != userID {
 				result.Errors = append(result.Errors, id)
 				continue
 			}
-			order.Status = models.StatusAccepted
-			order.ExpiresAt = time.Now().Add(ExpiredTime)
-			appendToHistory(ctx, order.ID, models.StatusAccepted)
 
-		case models.ActionTypeReturn:
-			if order.Status != models.StatusAccepted {
+			if time.Now().After(order.ExpiresAt) {
 				result.Errors = append(result.Errors, id)
 				continue
 			}
-			order.Status = models.StatusReturned
-			appendToHistory(ctx, order.ID, models.StatusReturned)
 
-		default:
-			result.Errors = append(result.Errors, id)
-			continue
+			switch actionType {
+			case models.ActionTypeIssue:
+				if order.Status != models.StatusExpects {
+					result.Errors = append(result.Errors, id)
+					continue
+				}
+				order.Status = models.StatusAccepted
+				order.ExpiresAt = time.Now().Add(ExpiredTime)
+
+			case models.ActionTypeReturn:
+				if order.Status != models.StatusAccepted {
+					result.Errors = append(result.Errors, id)
+					continue
+				}
+				order.Status = models.StatusReturned
+
+			default:
+				result.Errors = append(result.Errors, id)
+				continue
+			}
+
+			err = s.storage.UpdateOrderTx(ctx, tx, order)
+			if err != nil {
+				result.Errors = append(result.Errors, id)
+				continue
+			}
+			result.Processed = append(result.Processed, id)
 		}
+		return nil
+	})
 
-		_ = s.storage.UpdateOrder(order)
-		result.Processed = append(result.Processed, id)
+	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "ошибка транзакции при обработке заказов")
 	}
 
 	return result
@@ -309,37 +316,6 @@ func (s *orderService) ScrollOrders(userID uint64, lastID uint64, limit int) ([]
 	}
 
 	return result, nextLastID
-}
-
-func appendToHistory(ctx context.Context, orderID uint64, status models.OrderStatus) {
-	record := struct {
-		OrderID   uint64 `json:"order_id"`
-		Status    string `json:"status"`
-		Timestamp string `json:"created_at"`
-	}{
-		OrderID:   orderID,
-		Status:    string(status),
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-
-	file, err := os.OpenFile("order_history.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrOpenFiled, "ошибка открытия")
-		return
-	}
-	defer file.Close()
-
-	data, err := json.Marshal(record)
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка маршала")
-		return
-	}
-
-	_, err = file.Write(append(data, '\n'))
-	if err != nil {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrReadFiled, "ошибка записи")
-		return
-	}
 }
 
 type GetHistoryRequest struct {

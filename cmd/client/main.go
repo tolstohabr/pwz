@@ -48,7 +48,7 @@ func main() {
 
 	client := desc.NewNotifierClient(conn)
 
-	if err := getOrderHistory(ctx, client, 20008); err != nil {
+	if err := getOrderHistory(ctx, client, 20011); err != nil {
 		log.Fatalf("failed to get order history: %v", err)
 	}
 }
