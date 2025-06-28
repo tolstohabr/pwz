@@ -114,3 +114,17 @@ goose-down:
 
 goose-status:
 	goose -dir ./migrations postgres "$(DATABASE_DSN)" status
+
+.PHONY: test
+test:
+	go test ./...
+
+.PHONY: coverage
+coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+
+.PHONY: cover-html
+cover-html:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html

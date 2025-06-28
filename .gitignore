@@ -6,3 +6,8 @@ homework.exe
 
 .env
 order_history.json
+coverage.html
+coverage.out
+order_history.json
+orders.json
+orders2.json
