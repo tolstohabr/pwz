@@ -14,19 +14,79 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestPgStorage_SaveAndGetOrder(t *testing.T) {
-	ctx := context.Background()
+type PgStorageSuite struct {
+	suite.Suite
+	db        *pgxpool.Pool
+	container testcontainers.Container
+	storage   *storage.PgStorage
+	ctx       context.Context
+	cancel    context.CancelFunc
+}
 
-	db, terminate, err := setupTestDB(ctx)
-	require.NoError(t, err)
-	defer terminate()
+func (s *PgStorageSuite) SetupSuite() {
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 
-	pgStorage := storage.NewPgStorage(db)
+	req := testcontainers.ContainerRequest{
+		Image:        "postgres:16",
+		ExposedPorts: []string{"5432/tcp"},
+		Env: map[string]string{
+			"POSTGRES_PASSWORD": "test",
+			"POSTGRES_USER":     "test",
+			"POSTGRES_DB":       "testdb",
+		},
+		WaitingFor: wait.ForListeningPort("5432/tcp"),
+	}
+	container, err := testcontainers.GenericContainer(s.ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	require.NoError(s.T(), err)
+	s.container = container
 
+	host, err := container.Host(s.ctx)
+	require.NoError(s.T(), err)
+
+	port, err := container.MappedPort(s.ctx, "5432")
+	require.NoError(s.T(), err)
+
+	dsn := "postgres://test:test@" + host + ":" + port.Port() + "/testdb?sslmode=disable"
+	pool, err := pgxpool.New(s.ctx, dsn)
+	require.NoError(s.T(), err)
+
+	err = migrateTestDB(pool)
+	require.NoError(s.T(), err)
+
+	s.db = pool
+	s.storage = storage.NewPgStorage(pool)
+}
+
+func (s *PgStorageSuite) TearDownSuite() {
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.container != nil {
+		_ = s.container.Terminate(s.ctx)
+	}
+	if s.cancel != nil {
+		s.cancel()
+	}
+}
+
+func (s *PgStorageSuite) TearDownTest() {
+	// очищаем все таблицы между тестами
+	_, err := s.db.Exec(s.ctx, `
+		TRUNCATE TABLE orders CASCADE;
+		TRUNCATE TABLE order_history CASCADE;
+	`)
+	require.NoError(s.T(), err)
+}
+
+func (s *PgStorageSuite) Test_SaveAndGetOrder() {
 	order := models.Order{
 		ID:          1,
 		UserID:      10,
@@ -37,32 +97,24 @@ func TestPgStorage_SaveAndGetOrder(t *testing.T) {
 		PackageType: "box",
 	}
 
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.SaveOrderTx(ctx, tx, order)
+	err := s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.SaveOrderTx(ctx, tx, order)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
-	got, err := pgStorage.GetOrder(ctx, order.ID)
-	require.NoError(t, err)
+	got, err := s.storage.GetOrder(s.ctx, order.ID)
+	s.Require().NoError(err)
 
-	require.Equal(t, order.ID, got.ID)
-	require.Equal(t, order.UserID, got.UserID)
-	require.Equal(t, order.Status, got.Status)
-	require.WithinDuration(t, order.ExpiresAt.UTC(), got.ExpiresAt.UTC(), time.Second)
-	require.Equal(t, order.Weight, got.Weight)
-	require.Equal(t, order.Price, got.Price)
-	require.Equal(t, order.PackageType, got.PackageType)
+	s.Require().Equal(order.ID, got.ID)
+	s.Require().Equal(order.UserID, got.UserID)
+	s.Require().Equal(order.Status, got.Status)
+	s.Require().WithinDuration(order.ExpiresAt.UTC(), got.ExpiresAt.UTC(), time.Second)
+	s.Require().Equal(order.Weight, got.Weight)
+	s.Require().Equal(order.Price, got.Price)
+	s.Require().Equal(order.PackageType, got.PackageType)
 }
 
-func TestPgStorage_DeleteOrder(t *testing.T) {
-	ctx := context.Background()
-
-	db, terminate, err := setupTestDB(ctx)
-	require.NoError(t, err)
-	defer terminate()
-
-	pgStorage := storage.NewPgStorage(db)
-
+func (s *PgStorageSuite) Test_DeleteOrder() {
 	order := models.Order{
 		ID:          1,
 		UserID:      10,
@@ -73,27 +125,19 @@ func TestPgStorage_DeleteOrder(t *testing.T) {
 		PackageType: "box",
 	}
 
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.SaveOrderTx(ctx, tx, order)
+	err := s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.SaveOrderTx(ctx, tx, order)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
-	err = pgStorage.DeleteOrder(ctx, order.ID)
-	require.NoError(t, err)
+	err = s.storage.DeleteOrder(s.ctx, order.ID)
+	s.Require().NoError(err)
 
-	_, err = pgStorage.GetOrder(ctx, order.ID)
-	require.ErrorIs(t, err, domainErrors.ErrOrderNotFound)
+	_, err = s.storage.GetOrder(s.ctx, order.ID)
+	s.Require().ErrorIs(err, domainErrors.ErrOrderNotFound)
 }
 
-func TestPgStorage_UpdateOrderTx(t *testing.T) {
-	ctx := context.Background()
-
-	db, terminate, err := setupTestDB(ctx)
-	require.NoError(t, err)
-	defer terminate()
-
-	pgStorage := storage.NewPgStorage(db)
-
+func (s *PgStorageSuite) Test_UpdateOrderTx() {
 	order := models.Order{
 		ID:          1,
 		UserID:      10,
@@ -103,30 +147,30 @@ func TestPgStorage_UpdateOrderTx(t *testing.T) {
 		Price:       100,
 		PackageType: "box",
 	}
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.SaveOrderTx(ctx, tx, order)
+	err := s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.SaveOrderTx(ctx, tx, order)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
 	updatedOrder := order
 	updatedOrder.Status = "RETURNED"
 	updatedOrder.Weight = 11
 	updatedOrder.Price = 150
 
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.UpdateOrderTx(ctx, tx, updatedOrder)
+	err = s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.UpdateOrderTx(ctx, tx, updatedOrder)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
-	got, err := pgStorage.GetOrder(ctx, order.ID)
-	require.NoError(t, err)
+	got, err := s.storage.GetOrder(s.ctx, order.ID)
+	s.Require().NoError(err)
 
-	require.Equal(t, updatedOrder.Status, got.Status)
-	require.Equal(t, updatedOrder.Weight, got.Weight)
-	require.Equal(t, updatedOrder.Price, got.Price)
+	s.Require().Equal(updatedOrder.Status, got.Status)
+	s.Require().Equal(updatedOrder.Weight, got.Weight)
+	s.Require().Equal(updatedOrder.Price, got.Price)
 
-	history, err := pgStorage.GetHistory(ctx, 0, 10)
-	require.NoError(t, err)
+	history, err := s.storage.GetHistory(s.ctx, 0, 10)
+	s.Require().NoError(err)
 
 	found := false
 	for _, h := range history {
@@ -135,18 +179,10 @@ func TestPgStorage_UpdateOrderTx(t *testing.T) {
 			break
 		}
 	}
-	require.True(t, found, "ожидалось RETURNED")
+	s.Require().True(found, "ожидалось RETURNED в истории")
 }
 
-func TestPgStorage_ListOrders(t *testing.T) {
-	ctx := context.Background()
-
-	db, terminate, err := setupTestDB(ctx)
-	require.NoError(t, err)
-	defer terminate()
-
-	pgStorage := storage.NewPgStorage(db)
-
+func (s *PgStorageSuite) Test_ListOrders() {
 	orders := []models.Order{
 		{
 			ID:          1,
@@ -169,44 +205,36 @@ func TestPgStorage_ListOrders(t *testing.T) {
 	}
 
 	for _, o := range orders {
-		err := pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			return pgStorage.SaveOrderTx(ctx, tx, o)
+		err := s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+			return s.storage.SaveOrderTx(ctx, tx, o)
 		})
-		require.NoError(t, err)
+		s.Require().NoError(err)
 	}
 
-	listed, err := pgStorage.ListOrders(ctx)
-	require.NoError(t, err)
+	listed, err := s.storage.ListOrders(s.ctx)
+	s.Require().NoError(err)
 
-	require.GreaterOrEqual(t, len(listed), len(orders))
+	s.Require().GreaterOrEqual(len(listed), len(orders))
 
 	for _, expected := range orders {
 		var found bool
 		for _, got := range listed {
 			if got.ID == expected.ID {
 				found = true
-				require.Equal(t, expected.UserID, got.UserID)
-				require.Equal(t, expected.Status, got.Status)
-				require.WithinDuration(t, expected.ExpiresAt.UTC(), got.ExpiresAt.UTC(), time.Second)
-				require.Equal(t, expected.Weight, got.Weight)
-				require.Equal(t, expected.Price, got.Price)
-				require.Equal(t, expected.PackageType, got.PackageType)
+				s.Require().Equal(expected.UserID, got.UserID)
+				s.Require().Equal(expected.Status, got.Status)
+				s.Require().WithinDuration(expected.ExpiresAt.UTC(), got.ExpiresAt.UTC(), time.Second)
+				s.Require().Equal(expected.Weight, got.Weight)
+				s.Require().Equal(expected.Price, got.Price)
+				s.Require().Equal(expected.PackageType, got.PackageType)
 				break
 			}
 		}
-		require.True(t, found, "Order ID отсутствуе в списке", expected.ID)
+		s.Require().True(found, "Order ID отсутствует в списке", expected.ID)
 	}
 }
 
-func TestPgStorage_GetHistory(t *testing.T) {
-	ctx := context.Background()
-
-	db, terminate, err := setupTestDB(ctx)
-	require.NoError(t, err)
-	defer terminate()
-
-	pgStorage := storage.NewPgStorage(db)
-
+func (s *PgStorageSuite) Test_GetHistory() {
 	order := models.Order{
 		ID:          1,
 		UserID:      10,
@@ -217,19 +245,19 @@ func TestPgStorage_GetHistory(t *testing.T) {
 		PackageType: "tape",
 	}
 
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.SaveOrderTx(ctx, tx, order)
+	err := s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.SaveOrderTx(ctx, tx, order)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
 	order.Status = "ACCEPTED"
-	err = pgStorage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return pgStorage.UpdateOrderTx(ctx, tx, order)
+	err = s.storage.WithTransaction(s.ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return s.storage.UpdateOrderTx(ctx, tx, order)
 	})
-	require.NoError(t, err)
+	s.Require().NoError(err)
 
-	history, err := pgStorage.GetHistory(ctx, 0, 10)
-	require.NoError(t, err)
+	history, err := s.storage.GetHistory(s.ctx, 0, 10)
+	s.Require().NoError(err)
 
 	var foundExpects, foundAccepted bool
 	for _, h := range history {
@@ -240,60 +268,12 @@ func TestPgStorage_GetHistory(t *testing.T) {
 			foundAccepted = true
 		}
 	}
-	require.True(t, foundExpects, "не хватает статуса expects")
-	require.True(t, foundAccepted, "не хватает статуса accepted")
+	s.Require().True(foundExpects, "не хватает статуса expects")
+	s.Require().True(foundAccepted, "не хватает статуса accepted")
 }
 
-func setupTestDB(ctx context.Context) (*pgxpool.Pool, func(), error) {
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:16",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_USER":     "test",
-			"POSTGRES_DB":       "testdb",
-		},
-		WaitingFor: wait.ForListeningPort("5432/tcp"),
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	mappedPort, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	dsn := "postgres://test:test@" + host + ":" + mappedPort.Port() + "/testdb?sslmode=disable"
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		container.Terminate(ctx)
-		return nil, nil, err
-	}
-
-	err = migrateTestDB(pool)
-	if err != nil {
-		pool.Close()
-		container.Terminate(ctx)
-		return nil, nil, err
-	}
-
-	cleanup := func() {
-		pool.Close()
-		container.Terminate(ctx)
-	}
-
-	return pool, cleanup, nil
+func TestPgStorageSuite(t *testing.T) {
+	suite.Run(t, new(PgStorageSuite))
 }
 
 func migrateTestDB(pool *pgxpool.Pool) error {
