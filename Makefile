@@ -119,3 +119,6 @@ goose-status:
 coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
+
+e2e:
+	go test ./test1_test.go

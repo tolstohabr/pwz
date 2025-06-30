@@ -37,8 +37,8 @@ func main() {
 	}
 
 	// мастер
-	if err := processOrders(ctx, client, 1, desc.ActionType_ACTION_TYPE_RETURN, []uint64{20012}); err != nil {
-		log.Fatalf("processOrders flaied: %v", err)
+	if err := getOrderHistory(ctx, client, 20012); err != nil {
+		log.Fatalf("failed to list returns: %v", err)
 	}
 }
 
