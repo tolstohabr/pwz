@@ -3,10 +3,10 @@ homework.exe
 /vendor.protogen
 /.idea
 /trash
+/postgres-data
 
 .env
 order_history.json
 coverage.out
-order_history.json
 orders.json
 orders2.json
