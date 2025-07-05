@@ -18,7 +18,6 @@ const (
 	DateTimeFormat = "2006-01-02 15:04:05"
 )
 
-// TODO:
 func main() {
 	conn, err := grpc.NewClient(grpcAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

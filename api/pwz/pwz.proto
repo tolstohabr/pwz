@@ -136,7 +136,7 @@ service Notifier {
       description: "Описание...";
     };
   }
-//TODO:новая ручка
+
   rpc GetOrderHistory(OrderHistoryRequest) returns (OrderHistoryResponse) {
     option (google.api.http) = {
       get: "/order/{order_id}/history"
@@ -147,7 +147,7 @@ service Notifier {
     };
   }
 }
-//TODO:новые сообщения
+
 message OrderHistoryRequest {
   uint64 order_id = 1;
 }
