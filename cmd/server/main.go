@@ -53,7 +53,7 @@ func main() {
 	orderService := service.NewOrderService(storage)
 	orderServer := order.NewHandler(orderService)
 
-	rate := limiter.Rate{Period: 10 * time.Second, Limit: 2}
+	rate := limiter.Rate{Period: 10 * time.Second, Limit: 10}
 	store := memory.NewStore()
 	rateLimiter := mw.RateLimiterInterceptor(limiter.New(store, rate))
 

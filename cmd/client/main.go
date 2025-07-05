@@ -31,13 +31,22 @@ func main() {
 	defer cancel()
 
 	// слэйв
-	if err := listOrders(ctx, client, 1, false, nil, 0, 20); err != nil {
-		log.Fatalf("listOrders failed: %v", err)
-	}
-
-	// мастер
-	if err := getOrderHistory(ctx, client, 20012); err != nil {
+	if err := listReturns(ctx, client, 0, 2); err != nil {
 		log.Fatalf("failed to list returns: %v", err)
+	}
+	// мастер
+	orderIDs := []uint64{30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010, 30011, 30012, 30013, 30014, 30015}
+	err = processOrdersAsync(
+		ctx,
+		client,
+		1,
+		desc.ActionType_ACTION_TYPE_ISSUE,
+		orderIDs,
+		3,
+		3,
+	)
+	if err != nil {
+		log.Fatalf("failed to process orders: %v", err)
 	}
 }
 
