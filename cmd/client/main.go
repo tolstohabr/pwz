@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	desc "PWZ1.0/pkg/pwz"
@@ -68,7 +71,22 @@ func main() {
 		pool.Update(1)
 	}()
 
-	time.Sleep(20 * time.Second)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		time.Sleep(10 * time.Second)
+		sigs <- syscall.SIGINT
+	}()
+
+	select {
+	case sig := <-sigs:
+		log.Printf("Signal %v", sig)
+		pool.Shutdown()
+	case <-time.After(20 * time.Second):
+		log.Println("Timeout")
+		pool.Shutdown()
+	}
 }
 
 func addReadMetadata(ctx context.Context) context.Context {

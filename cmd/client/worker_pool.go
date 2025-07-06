@@ -107,3 +107,17 @@ func (wp *WorkerPool) worker(ctx context.Context, id int) {
 		}
 	}
 }
+
+func (wp *WorkerPool) Shutdown() {
+	wp.mu.Lock()
+	defer wp.mu.Unlock()
+
+	close(wp.jobChan)
+
+	for _, cancel := range wp.cancelFuncs {
+		cancel()
+	}
+	wp.workers = 0
+
+	log.Println("[WorkerPool] shutdown complete")
+}
