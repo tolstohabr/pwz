@@ -36,7 +36,8 @@ func main() {
 		log.Fatal("Postgres DSN is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	//todo: увеличиваю время
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
 	db, err := pgxpool.New(ctx, dsn)
@@ -53,7 +54,8 @@ func main() {
 	orderService := service.NewOrderService(storage)
 	orderServer := order.NewHandler(orderService)
 
-	rate := limiter.Rate{Period: 10 * time.Second, Limit: 10}
+	//todo: увеличиваю лимит
+	rate := limiter.Rate{Period: 10 * time.Second, Limit: 100}
 	store := memory.NewStore()
 	rateLimiter := mw.RateLimiterInterceptor(limiter.New(store, rate))
 

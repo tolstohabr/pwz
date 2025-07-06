@@ -50,7 +50,6 @@ type NotifierClient interface {
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*OrderHistoryList, error)
 	// Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
 	ImportOrders(ctx context.Context, in *ImportOrdersRequest, opts ...grpc.CallOption) (*ImportResult, error)
-	// TODO:новая ручка
 	GetOrderHistory(ctx context.Context, in *OrderHistoryRequest, opts ...grpc.CallOption) (*OrderHistoryResponse, error)
 }
 
@@ -172,7 +171,6 @@ type NotifierServer interface {
 	GetHistory(context.Context, *GetHistoryRequest) (*OrderHistoryList, error)
 	// Импорт заказов (если эта ручка делалась ранее в рамках доп заданий)
 	ImportOrders(context.Context, *ImportOrdersRequest) (*ImportResult, error)
-	// TODO:новая ручка
 	GetOrderHistory(context.Context, *OrderHistoryRequest) (*OrderHistoryResponse, error)
 	mustEmbedUnimplementedNotifierServer()
 }

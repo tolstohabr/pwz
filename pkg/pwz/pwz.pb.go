@@ -389,7 +389,6 @@ func (x *MessageResponse) GetId() uint32 {
 	return 0
 }
 
-// TODO:новые сообщения
 type OrderHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OrderId       uint64                 `protobuf:"varint,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
