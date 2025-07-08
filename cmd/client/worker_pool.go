@@ -56,11 +56,13 @@ func (wp *WorkerPool) Stop(n int) {
 	}
 
 	for i := 0; i < n; i++ {
-		cancel := wp.cancelFuncs[0]
+		cancel := wp.cancelFuncs[i]
 		cancel()
-		wp.cancelFuncs = wp.cancelFuncs[1:]
-		wp.workers--
 	}
+
+	wp.cancelFuncs = wp.cancelFuncs[n:]
+	wp.workers -= n
+
 	log.Printf("[WorkerPool] stopped %d workers (total %d)", n, wp.workers)
 }
 

@@ -118,10 +118,6 @@ func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64
 	return nil
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, inPvz bool, lastN *uint32, page uint32, limit uint32) error {
 	ctx = addReadMetadata(ctx)
 
