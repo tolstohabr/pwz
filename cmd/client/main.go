@@ -35,8 +35,8 @@ func main() {
 		log.Fatalf("failed to list returns: %v", err)
 	}
 	// мастер
-	if err := returnOrder(ctx, client, 20001); err != nil {
-		log.Fatalf("failed to return order: %v", err)
+	if err := acceptOrder(ctx, client, 40001, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1, 100); err != nil {
+		log.Fatalf("failed to accept order: %v", err)
 	}
 }
 
@@ -67,6 +67,10 @@ func acceptOrder(ctx context.Context, client desc.NotifierClient, orderID uint64
 
 	log.Printf("Order accepted: %v", res)
 	return nil
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
 
 func listOrders(ctx context.Context, client desc.NotifierClient, userID uint64, inPvz bool, lastN *uint32, page uint32, limit uint32) error {

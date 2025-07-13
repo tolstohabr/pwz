@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -22,6 +23,8 @@ type Storage interface {
 	SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
 	UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error
 	WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error
+	//TODO: новая
+	SaveEventTx(ctx context.Context, tx pgx.Tx, order models.Event) error
 }
 
 type PgStorage struct {
@@ -106,6 +109,34 @@ func (ps *PgStorage) SaveOrderTx(ctx context.Context, tx pgx.Tx, order models.Or
 		log.Printf("Failed to save order history: %v\n", err)
 	}
 	return err
+}
+
+func (ps *PgStorage) SaveEventTx(ctx context.Context, tx pgx.Tx, event models.Event) error {
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("Failed to marshal event: %v\n", err)
+		return err
+	}
+
+	const query = `
+		INSERT INTO outbox (id, payload, status, created_at)
+		VALUES ($1, $2, 'CREATED', now())
+	`
+
+	ps.logQuery(ctx, query, event.EventID, string(payload))
+
+	_, err = tx.Exec(ctx, query,
+		event.EventID,
+		payload,
+	)
+
+	if err != nil {
+		log.Printf("Failed to insert into outbox: %v\n", err)
+		return err
+	}
+
+	return nil
 }
 
 func (ps *PgStorage) UpdateOrderTx(ctx context.Context, tx pgx.Tx, order models.Order) error {

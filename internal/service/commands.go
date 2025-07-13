@@ -10,6 +10,7 @@ import (
 	"PWZ1.0/internal/models/domainErrors"
 	"PWZ1.0/internal/storage"
 	"PWZ1.0/internal/tools/logger"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -97,11 +98,31 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 	newOrder.CalculateTotalPrice()
 
 	err = s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		//было
-		return s.storage.SaveOrderTx(ctx, tx, newOrder)
-		//TODO: надо сделать так
-		//s.storage.SaveOrderTx(ctx, tx, newOrder)
-		//return s.storage.SaveEventTx(ctx, tx, newOrder)
+		if err := s.storage.SaveOrderTx(ctx, tx, newOrder); err != nil {
+			return err
+		}
+
+		event := models.Event{
+			EventID:   uuid.New(),
+			EventType: "order_accepted",
+			Timestamp: time.Now().UTC(),
+			Actor: models.Actor{
+				Type: "courier",
+				ID:   int(userID),
+			},
+			Order: models.EventOrder{
+				ID:     newOrder.ID,
+				UserID: newOrder.UserID,
+				Status: newOrder.Status,
+			},
+			Source: "pvz-api",
+		}
+
+		if err := s.storage.SaveEventTx(ctx, tx, event); err != nil {
+			return err
+		}
+
+		return nil
 	})
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "Failed to save order")
