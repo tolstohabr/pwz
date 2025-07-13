@@ -97,6 +97,7 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 	newOrder.CalculateTotalPrice()
 
 	err = s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		//было
 		return s.storage.SaveOrderTx(ctx, tx, newOrder)
 		//TODO: надо сделать так
 		//s.storage.SaveOrderTx(ctx, tx, newOrder)
