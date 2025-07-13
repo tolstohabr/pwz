@@ -258,6 +258,47 @@
         ]
       }
     },
+    "/order/{orderId}/return_order": {
+      "post": {
+        "summary": "Вернуть заказ курьеру",
+        "description": "Описание...",
+        "operationId": "Notifier_ReturnOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/notifierOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NotifierReturnOrderBody"
+            }
+          }
+        ],
+        "tags": [
+          "Notifier"
+        ]
+      }
+    },
     "/process_orders": {
       "post": {
         "summary": "Выдать заказы или принять возврат клиента",
@@ -291,43 +332,12 @@
           "Notifier"
         ]
       }
-    },
-    "/return_order": {
-      "post": {
-        "summary": "Вернуть заказ курьеру",
-        "description": "Описание...",
-        "operationId": "Notifier_ReturnOrder",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/notifierOrderResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/notifierOrderIdRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Notifier"
-        ]
-      }
     }
   },
   "definitions": {
+    "NotifierReturnOrderBody": {
+      "type": "object"
+    },
     "notifierAcceptOrderRequest": {
       "type": "object",
       "properties": {
@@ -534,15 +544,6 @@
             "type": "object",
             "$ref": "#/definitions/notifierOrderHistory"
           }
-        }
-      }
-    },
-    "notifierOrderIdRequest": {
-      "type": "object",
-      "properties": {
-        "orderId": {
-          "type": "string",
-          "format": "uint64"
         }
       }
     },

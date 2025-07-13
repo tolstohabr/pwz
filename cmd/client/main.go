@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	desc "PWZ1.0/pkg/pwz"
@@ -38,54 +35,8 @@ func main() {
 		log.Fatalf("failed to list returns: %v", err)
 	}
 	// мастер
-	orderIDs := []uint64{30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010, 30011, 30012, 30013,
-		30014, 30015, 30016, 30017, 30019, 30020, 30021, 30022, 30023, 30025, 30026, 30027, 30028, 30029, 30030,
-		30031, 30032, 30033, 30034, 30035, 30036, 30037, 30038, 30039, 30040, 30041, 30042, 30043, 30044, 30045}
-	batchSize := 2
-
-	var jobs []processJob
-	for i := 0; i < len(orderIDs); i += batchSize {
-		end := i + batchSize
-		if end > len(orderIDs) {
-			end = len(orderIDs)
-		}
-		jobs = append(jobs, processJob{orderIDs: orderIDs[i:end]})
-	}
-
-	pool := NewWorkerPool(client, 1, desc.ActionType_ACTION_TYPE_ISSUE)
-	pool.Start(2)
-
-	go func() {
-		for _, job := range jobs {
-			pool.Submit(job)
-		}
-	}()
-
-	go func() {
-		time.Sleep(2 * time.Second)
-		log.Println("Updating to 3 workers")
-		pool.Update(3)
-
-		time.Sleep(2 * time.Second)
-		log.Println("Updating to 1 workers")
-		pool.Update(1)
-	}()
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		time.Sleep(10 * time.Second)
-		sigs <- syscall.SIGINT
-	}()
-
-	select {
-	case sig := <-sigs:
-		log.Printf("Signal %v", sig)
-		pool.Shutdown()
-	case <-time.After(20 * time.Second):
-		log.Println("Timeout")
-		pool.Shutdown()
+	if err := returnOrder(ctx, client, 20001); err != nil {
+		log.Fatalf("failed to return order: %v", err)
 	}
 }
 

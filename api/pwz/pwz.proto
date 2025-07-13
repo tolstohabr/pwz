@@ -73,7 +73,8 @@ service Notifier {
   // Вернуть заказ курьеру
   rpc ReturnOrder(OrderIdRequest) returns (OrderResponse) {
     option (google.api.http) = {
-      post: "/return_order"
+      //post: "/return_order"было
+      post: "/order/{order_id}/return_order"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {

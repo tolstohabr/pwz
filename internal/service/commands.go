@@ -98,6 +98,9 @@ func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, 
 
 	err = s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return s.storage.SaveOrderTx(ctx, tx, newOrder)
+		//TODO: надо сделать так
+		//s.storage.SaveOrderTx(ctx, tx, newOrder)
+		//return s.storage.SaveEventTx(ctx, tx, newOrder)
 	})
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "Failed to save order")

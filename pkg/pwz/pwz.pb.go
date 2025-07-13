@@ -1492,11 +1492,11 @@ const file_pwz_pwz_proto_rawDesc = "" +
 	"\x14ORDER_STATUS_EXPECTS\x10\x01\x12\x19\n" +
 	"\x15ORDER_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15ORDER_STATUS_RETURNED\x10\x03\x12\x18\n" +
-	"\x14ORDER_STATUS_DELETED\x10\x042\xd5\f\n" +
+	"\x14ORDER_STATUS_DELETED\x10\x042\xe6\f\n" +
 	"\bNotifier\x12s\n" +
 	"\vSendMessage\x12\x18.notifier.MessageRequest\x1a\x19.notifier.MessageResponse\"/\x92A\x15\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/SendMessage\x12\xa5\x01\n" +
-	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\"_\x92AD\x12-Принять заказ от курьера\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/accept_order\x12\x9c\x01\n" +
-	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\"Z\x92A?\x12(Вернуть заказ курьеру\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/return_order\x12\xcc\x01\n" +
+	"\vAcceptOrder\x12\x1c.notifier.AcceptOrderRequest\x1a\x17.notifier.OrderResponse\"_\x92AD\x12-Принять заказ от курьера\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/accept_order\x12\xad\x01\n" +
+	"\vReturnOrder\x12\x18.notifier.OrderIdRequest\x1a\x17.notifier.OrderResponse\"k\x92A?\x12(Вернуть заказ курьеру\x1a\x13Описание...\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/order/{order_id}/return_order\x12\xcc\x01\n" +
 	"\rProcessOrders\x12\x1e.notifier.ProcessOrdersRequest\x1a\x17.notifier.ProcessResult\"\x81\x01\x92Ad\x12MВыдать заказы или принять возврат клиента\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/process_orders\x12\x9e\x01\n" +
 	"\n" +
 	"ListOrders\x12\x1b.notifier.ListOrdersRequest\x1a\x14.notifier.OrdersList\"]\x92AC\x12,Получить список заказов\x1a\x13Описание...\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/list_orders\x12\xa6\x01\n" +
