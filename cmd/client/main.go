@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("failed to list returns: %v", err)
 	}
 	// мастер
-	if err := acceptOrder(ctx, client, 40001, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1, 100); err != nil {
+	if err := acceptOrder(ctx, client, 40003, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1, 100); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
 	}
 }
