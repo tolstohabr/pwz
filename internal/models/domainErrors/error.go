@@ -3,26 +3,24 @@ package domainErrors
 import "errors"
 
 var (
-	ErrValidationFailed   = errors.New("ошибка проверки") //общее	//значения не прошли проверку на соответствие заданным правилам
-	ErrOrderNotFound      = errors.New("заказ не найден")
-	ErrInvalidInput       = errors.New("неверный ввод")
-	ErrDuplicateOrder     = errors.New("заказ с таким ID уже существует")
-	ErrOrderAlreadyExists = errors.New("заказ уже есть")
-	ErrOrderAlreadyIssued = errors.New("заказ у клиента")
-	ErrStorageExpired     = errors.New("время хранения истекло")
-	ErrStorageNotExpired  = errors.New("время хранения не истекло")
-	ErrReturnTimeExpired  = errors.New("время возврата истекло")
-	ErrInvalidAction      = errors.New("непредусмотренное действие")
-	ErrInternalError      = errors.New("внутренняя ошибка") //общее
-	ErrImportFailed       = errors.New("ошибка импорта")    //общее
-	ErrOpenFiled          = errors.New("ошибка открытия")   //общее
-	ErrReadFiled          = errors.New("ошибка записи")     //общее
-	ErrJsonFiled          = errors.New("ошибка JSON")       //общее
-	//todo: новые ошибки
-	ErrWeightTooHeavy = errors.New("вес слишком большой")
-	ErrInvalidPackage = errors.New("неизвестная упаковка или другая ошибка упаковки") //можно просто VALIDATION_FAILED
-	//todo: ошибки gRPC и HTTP
-	//
+	ErrValidationFailed     = errors.New("ошибка проверки") //общее	//значения не прошли проверку на соответствие заданным правилам
+	ErrOrderNotFound        = errors.New("заказ не найден")
+	ErrInvalidInput         = errors.New("неверный ввод")
+	ErrDuplicateOrder       = errors.New("заказ с таким ID уже существует")
+	ErrOrderAlreadyExists   = errors.New("заказ уже есть")
+	ErrOrderAlreadyIssued   = errors.New("заказ у клиента")
+	ErrStorageExpired       = errors.New("время хранения истекло")
+	ErrStorageNotExpired    = errors.New("время хранения не истекло")
+	ErrReturnTimeExpired    = errors.New("время возврата истекло")
+	ErrInvalidAction        = errors.New("непредусмотренное действие")
+	ErrInternalError        = errors.New("внутренняя ошибка") //общее
+	ErrImportFailed         = errors.New("ошибка импорта")    //общее
+	ErrOpenFiled            = errors.New("ошибка открытия")   //общее
+	ErrReadFiled            = errors.New("ошибка записи")     //общее
+	ErrJsonFiled            = errors.New("ошибка JSON")       //общее
+	ErrWeightTooHeavy       = errors.New("вес слишком большой")
+	ErrInvalidPackage       = errors.New("неизвестная упаковка или другая ошибка упаковки") //можно просто VALIDATION_FAILED
+	ErrOrderAlreadyReturned = errors.New("заказ уже был возвращен")
 )
 
 // Привязка ошибок к кодам

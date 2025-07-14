@@ -155,35 +155,55 @@ func (s *orderService) ReturnOrder(ctx context.Context, orderID uint64) (*OrderR
 		return nil, domainErrors.ErrOrderAlreadyIssued
 	}
 
-	if order.Status == models.StatusReturned {
+	if order.Status != models.StatusReturned && time.Now().Before(order.ExpiresAt) {
+		logger.LogErrorWithCode(ctx, domainErrors.ErrStorageNotExpired, "Storage not expired yet")
+		return nil, domainErrors.ErrStorageNotExpired
+	}
+
+	var deleted bool
+
+	err = s.storage.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		err := s.storage.DeleteOrder(ctx, orderID)
 		if err != nil {
-			logger.LogErrorWithCode(ctx, err, "Failed to delete returned order")
-			return nil, err
+			return err
 		}
-		log.Printf("Returned order deleted: orderID=%d", orderID)
+
+		deleted = true
+
+		event := models.Event{
+			EventID:   uuid.New(),
+			EventType: "order_returned_by_client",
+			Timestamp: time.Now().UTC(),
+			Actor: models.Actor{
+				Type: "courier",
+				ID:   int(order.UserID),
+			},
+			Order: models.EventOrder{
+				ID:     order.ID,
+				UserID: order.UserID,
+				Status: models.StatusDeleted,
+			},
+			Source: "pvz-api",
+		}
+
+		return s.storage.SaveEventTx(ctx, tx, event)
+	})
+
+	if err != nil {
+		logger.LogErrorWithCode(ctx, err, "Failed to delete order or save event")
+		return nil, err
+	}
+
+	if deleted {
+		log.Printf("Order returned by client and deleted: orderID=%d", orderID)
 		return &OrderResponse{
 			OrderID: orderID,
 			Status:  models.StatusDeleted,
 		}, nil
 	}
 
-	if time.Now().Before(order.ExpiresAt) {
-		logger.LogErrorWithCode(ctx, domainErrors.ErrStorageNotExpired, "Storage not expired yet")
-		return nil, domainErrors.ErrStorageNotExpired
-	}
-
-	err = s.storage.DeleteOrder(ctx, orderID)
-	if err != nil {
-		logger.LogErrorWithCode(ctx, err, "Failed to delete expired order")
-		return nil, err
-	}
-
-	log.Printf("Expired order deleted: orderID=%d", orderID)
-	return &OrderResponse{
-		OrderID: orderID,
-		Status:  models.StatusDeleted,
-	}, nil
+	logger.LogErrorWithCode(ctx, domainErrors.ErrOrderAlreadyReturned, "Unexpected state after ReturnOrder")
+	return nil, domainErrors.ErrOrderAlreadyReturned
 }
 
 func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionType models.ActionType, orderIDs []uint64) ProcessResult {
@@ -207,6 +227,8 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 				continue
 			}
 
+			var eventType string
+
 			switch actionType {
 			case models.ActionTypeIssue:
 				if order.Status != models.StatusExpects {
@@ -215,6 +237,7 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 				}
 				order.Status = models.StatusAccepted
 				order.ExpiresAt = time.Now().Add(ExpiredTime)
+				eventType = "order_issued"
 
 			case models.ActionTypeReturn:
 				if order.Status != models.StatusAccepted {
@@ -222,19 +245,42 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 					continue
 				}
 				order.Status = models.StatusReturned
+				eventType = "order_returned_to_courier"
 
 			default:
 				result.Errors = append(result.Errors, id)
 				continue
 			}
 
-			err = s.storage.UpdateOrderTx(ctx, tx, order)
-			if err != nil {
+			if err = s.storage.UpdateOrderTx(ctx, tx, order); err != nil {
 				result.Errors = append(result.Errors, id)
 				continue
 			}
+
+			event := models.Event{
+				EventID:   uuid.New(),
+				EventType: eventType,
+				Timestamp: time.Now().UTC(),
+				Actor: models.Actor{
+					Type: "courier",
+					ID:   int(userID),
+				},
+				Order: models.EventOrder{
+					ID:     order.ID,
+					UserID: order.UserID,
+					Status: order.Status,
+				},
+				Source: "pvz-api",
+			}
+
+			if err := s.storage.SaveEventTx(ctx, tx, event); err != nil {
+				result.Errors = append(result.Errors, id)
+				continue
+			}
+
 			result.Processed = append(result.Processed, id)
 		}
+
 		return nil
 	})
 
