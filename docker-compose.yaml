@@ -69,3 +69,7 @@ services:
 #    depends_on:
 #      - go-consumer-1
 
+  redis:
+    image: redis:7.4.0-alpine3.20
+    ports:
+      - "6379:6379"
