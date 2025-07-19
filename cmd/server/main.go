@@ -10,9 +10,12 @@ import (
 
 	"PWZ1.0/internal/app/order"
 	"PWZ1.0/internal/mw"
+	"PWZ1.0/internal/order_cache"
 	"PWZ1.0/internal/service"
 	"PWZ1.0/internal/storage"
+	"PWZ1.0/internal/tools/logger"
 	desc "PWZ1.0/pkg/pwz"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -26,6 +29,12 @@ import (
 const grpcAddress = "localhost:50051"
 
 func main() {
+	logger.InitLogger()
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
@@ -50,8 +59,13 @@ func main() {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	cache := order_cache.New(redisClient, 1*time.Minute)
+
 	storage := storage.NewPgStorage(db)
-	orderService := service.NewOrderService(storage)
+	orderService := service.NewOrderService(storage, cache)
 	orderServer := order.NewHandler(orderService)
 
 	//todo: увеличиваю лимит

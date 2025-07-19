@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 	"time"
 
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
+	"PWZ1.0/internal/order_cache"
 	"PWZ1.0/internal/storage"
 	"PWZ1.0/internal/tools/logger"
 	"github.com/google/uuid"
@@ -50,6 +53,7 @@ type ProcessResult struct {
 
 type orderService struct {
 	storage storage.Storage
+	cache   order_cache.Cache
 }
 
 type OrderResponse struct {
@@ -57,8 +61,11 @@ type OrderResponse struct {
 	Status  models.OrderStatus
 }
 
-func NewOrderService(storage storage.Storage) OrderService {
-	return &orderService{storage: storage}
+func NewOrderService(storage storage.Storage, cache order_cache.Cache) OrderService {
+	return &orderService{
+		storage: storage,
+		cache:   cache,
+	}
 }
 
 func (s *orderService) AcceptOrder(ctx context.Context, orderID, userID uint64, weight, price float32, expiresAt time.Time, packageType models.PackageType) (models.Order, error) {
@@ -196,6 +203,7 @@ func (s *orderService) ReturnOrder(ctx context.Context, orderID uint64) (*OrderR
 
 	if deleted {
 		log.Printf("Order returned by client and deleted: orderID=%d", orderID)
+		_ = s.cache.Delete(ctx, fmt.Sprintf("%d", orderID))
 		return &OrderResponse{
 			OrderID: orderID,
 			Status:  models.StatusDeleted,
@@ -279,6 +287,8 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 			}
 
 			result.Processed = append(result.Processed, id)
+
+			_ = s.cache.Delete(ctx, fmt.Sprintf("%d", id))
 		}
 
 		return nil
@@ -432,6 +442,16 @@ func (s *orderService) GetHistory(ctx context.Context, page, count uint32) ([]mo
 func (s *orderService) GetOrderHistory(ctx context.Context, orderID uint64) ([]models.OrderHistory, error) {
 	log.Printf("GetOrderHistory called: orderID=%d", orderID)
 
+	cacheKey := fmt.Sprintf("%d", orderID)
+
+	cachedData, err := s.cache.Get(ctx, cacheKey)
+	if err == nil && cachedData != "" {
+		var cachedHistory []models.OrderHistory
+		if err := json.Unmarshal([]byte(cachedData), &cachedHistory); err == nil {
+			return cachedHistory, nil
+		}
+	}
+
 	history, err := s.storage.GetHistory(ctx, 0, 0)
 	if err != nil {
 		logger.LogErrorWithCode(ctx, err, "Failed to get order history")
@@ -451,5 +471,10 @@ func (s *orderService) GetOrderHistory(ctx context.Context, orderID uint64) ([]m
 	}
 
 	log.Printf("GetOrderHistory result: count=%d", len(filtered))
+
+	dataBytes, err := json.Marshal(filtered)
+	if err == nil {
+		_ = s.cache.Set(ctx, cacheKey, string(dataBytes))
+	}
 	return filtered, nil
 }

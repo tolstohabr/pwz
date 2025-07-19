@@ -30,13 +30,12 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// слэйв
-	if err := listReturns(ctx, client, 0, 2); err != nil {
-		log.Fatalf("failed to list returns: %v", err)
-	}
-	// мастер
-	if err := acceptOrder(ctx, client, 40003, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1, 100); err != nil {
+	if err := acceptOrder(ctx, client, 50006, 1, time.Now().Add(24*time.Hour), ptr(desc.PackageType_PACKAGE_TYPE_BOX), 1, 100); err != nil {
 		log.Fatalf("failed to accept order: %v", err)
+	}
+
+	if err := getOrderHistory(ctx, client, 50006); err != nil {
+		log.Fatalf("failed to get order history: %v", err)
 	}
 }
 
