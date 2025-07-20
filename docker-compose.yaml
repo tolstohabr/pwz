@@ -73,3 +73,11 @@ services:
     image: redis:7.4.0-alpine3.20
     ports:
       - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+

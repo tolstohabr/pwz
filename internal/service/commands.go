@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"PWZ1.0/internal/metrics"
 	"PWZ1.0/internal/models"
 	"PWZ1.0/internal/models/domainErrors"
 	"PWZ1.0/internal/order_cache"
@@ -246,6 +247,9 @@ func (s *orderService) ProcessOrders(ctx context.Context, userID uint64, actionT
 				order.Status = models.StatusAccepted
 				order.ExpiresAt = time.Now().Add(ExpiredTime)
 				eventType = "order_issued"
+
+				metrics.OrdersIssued.Inc()
+				log.Println("метрика")
 
 			case models.ActionTypeReturn:
 				if order.Status != models.StatusAccepted {

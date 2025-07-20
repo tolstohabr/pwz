@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
 	"PWZ1.0/internal/app/order"
+	"PWZ1.0/internal/metrics"
 	"PWZ1.0/internal/mw"
 	"PWZ1.0/internal/order_cache"
 	"PWZ1.0/internal/service"
 	"PWZ1.0/internal/storage"
 	"PWZ1.0/internal/tools/logger"
 	desc "PWZ1.0/pkg/pwz"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,10 +29,14 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const grpcAddress = "localhost:50051"
+const (
+	grpcAddress    = "localhost:50051"
+	metricsAddress = ":2112"
+)
 
 func main() {
 	logger.InitLogger()
+	metrics.Init()
 
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
@@ -83,6 +90,14 @@ func main() {
 
 	reflection.Register(grpcServer)
 	desc.RegisterNotifierServer(grpcServer, orderServer)
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Printf("prometheus metrics server listening on %s", metricsAddress)
+		if err := http.ListenAndServe(metricsAddress, nil); err != nil {
+			log.Fatalf("failed to start metrics server: %v", err)
+		}
+	}()
 
 	lis, err := net.Listen("tcp", grpcAddress)
 	if err != nil {
