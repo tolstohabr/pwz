@@ -8,31 +8,71 @@ import (
 
 type OrderStatus string
 type PackageType string
+type ActionType int
 
 const (
 	//статусы
-	StatusAccepted OrderStatus = "ACCEPTED" //заказ принят от курьера и лежит на складе
-	StatusIssued   OrderStatus = "ISSUED"   //заказ у клиента
-	StatusReturned OrderStatus = "RETURNED" //заказ возвращен
+	//старые
+	/*StatusExpects OrderStatus = "ACCEPTED" //заказ принят от курьера и лежит на складе
+	StatusAccepted   OrderStatus = "ISSUED"   //заказ у клиента
+	StatusReturned OrderStatus = "RETURNED" //заказ возвращен*/
+	StatusUnspecified OrderStatus = "UNSPECIFIED" // не указан
+	StatusExpects     OrderStatus = "EXPECTS"     // получен от курьера, ожидает выдачи клиенту
+	StatusAccepted    OrderStatus = "ACCEPTED"    // выдан клиенту
+	StatusReturned    OrderStatus = "RETURNED"    // возвращен клиентом в ПВЗ
+	StatusDeleted     OrderStatus = "DELETED"     // возвращен курьеру из ПВЗ(удален)
+
 	//виды упаковки
-	PackageBag     PackageType = "bag"      //пакет
-	PackageBox     PackageType = "box"      //коробка
-	PackageFilm    PackageType = "film"     //пленка
-	PackageBagFilm PackageType = "bag+film" //пакет и пленка
-	PackageBoxFilm PackageType = "box+film" //коробка и пленка
-	PackageNone    PackageType = "none"     //нету и пленка
+	PackageBag         PackageType = "bag"         // пакет
+	PackageBox         PackageType = "box"         // коробка
+	PackageTape        PackageType = "tape"        // пленка
+	PackageBagTape     PackageType = "bag+tape"    // пакет и пленка
+	PackageBoxTape     PackageType = "box+tape"    // коробка и пленка
+	PackageUnspecified PackageType = "unspecified" // нету
+	//виды действий
+	ActionTypeUnspecified ActionType = iota
+	ActionTypeIssue
+	ActionTypeReturn
 )
 
-type Order struct {
-	ID        string      `json:"id"`
-	UserID    string      `json:"user_id"`
-	ExpiresAt time.Time   `json:"expires_at"` //время до которого заказ можно выдать
+type OrderHistory struct {
+	ID        uint64      `json:"id"`
+	OrderID   uint64      `json:"order_id"`
 	Status    OrderStatus `json:"status"`
-	IssuedAt  *time.Time  `json:"issued_at,omitempty"` //время когда заказ был выдан клиенту
-	//новые поля
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+func (a ActionType) String() string {
+	switch a {
+	case ActionTypeIssue:
+		return "issue"
+	case ActionTypeReturn:
+		return "return"
+	default:
+		return "unspecified"
+	}
+}
+
+// ParseActionType парсит строку в ActionType
+func ParseActionType(s string) ActionType {
+	switch s {
+	case "issue":
+		return ActionTypeIssue
+	case "return":
+		return ActionTypeReturn
+	default:
+		return ActionTypeUnspecified
+	}
+}
+
+type Order struct {
+	ID          uint64      `json:"id"`
+	UserID      uint64      `json:"user_id"`
+	ExpiresAt   time.Time   `json:"expires_at"` //время до которого заказ можно выдать
+	Status      OrderStatus `json:"status"`
 	PackageType PackageType `json:"package_type"`
-	Weight      float64     `json:"weight"`
-	Price       float64     `json:"price"`
+	Weight      float32     `json:"weight"`
+	Price       float32     `json:"price"`
 }
 
 // расчёт всей стоимости
@@ -42,19 +82,21 @@ func (o *Order) CalculateTotalPrice() {
 		o.Price += 5
 	case PackageBox:
 		o.Price += 20
-	case PackageFilm:
+	case PackageTape:
 		o.Price += 1
-	case PackageBagFilm:
+	case PackageBagTape:
 		o.Price += 6
-	case PackageBoxFilm:
+	case PackageBoxTape:
 		o.Price += 21
+	case PackageUnspecified:
+		o.Price += 0
 	}
 }
 
 // валидация веса
 func (o *Order) ValidationWeight() error {
 	switch o.PackageType {
-	case PackageNone:
+	case PackageUnspecified:
 		return nil
 	case PackageBag:
 		if o.Weight >= 10 {
@@ -66,14 +108,14 @@ func (o *Order) ValidationWeight() error {
 			return domainErrors.ErrWeightTooHeavy
 		}
 		return nil
-	case PackageFilm:
+	case PackageTape:
 		return nil
-	case PackageBagFilm:
+	case PackageBagTape:
 		if o.Weight >= 10 {
 			return domainErrors.ErrWeightTooHeavy
 		}
 		return nil
-	case PackageBoxFilm:
+	case PackageBoxTape:
 		if o.Weight >= 30 {
 			return domainErrors.ErrWeightTooHeavy
 		}

@@ -1,1 +1,12 @@
 homework.exe
+/bin
+/vendor.protogen
+/.idea
+/trash
+/postgres-data
+
+.env
+order_history.json
+coverage.out
+orders.json
+orders2.json
